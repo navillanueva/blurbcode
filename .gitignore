@@ -33,3 +33,6 @@ logs/
 .ralph/
 *.bun-build
 tsconfig.tsbuildinfo
+
+# Local handoff doc (next-window status) — keep local, not shipped
+/STATUS-AND-NEXT.md
