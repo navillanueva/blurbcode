@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@visual-code/api",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "description": "Visual Code backend — the hub (auth, auction, accounting, settlement) per plans/CONTRACT.md",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "migrate": "bun run src/db/cli-migrate.ts",
+    "build": "bun build src/index.ts --target=bun --outdir dist",
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test",
+    "smoke": "bun run src/settlement/smoke.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "1.0.0-rc.2",
+    "hono": "4.10.7",
+    "jose": "5.9.6",
+    "viem": "^2.21.0"
+  },
+  "optionalDependencies": {
+    "@circle-fin/x402-batching": "3.0.4",
+    "@unlink-xyz/sdk": "0.3.0-canary.552"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17",
+    "@tsconfig/bun": "1.0.9",
+    "@types/bun": "1.3.13",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1",
+    "drizzle-kit": "1.0.0-rc.2",
+    "typescript": "5.8.2"
+  }
+}
