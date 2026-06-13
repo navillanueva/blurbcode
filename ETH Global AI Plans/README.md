@@ -27,4 +27,6 @@ was planned and built with AI.
 - `PROGRESS.md` — the task-by-task build log the loop maintained.
 - `dynamic-and-tui-scoping.md` — why an embedded wallet can't be pure-TUI, and the MCP workaround.
 - `visual-code-mvp-architecture.md` — the "backend is the hub" MVP architecture.
-- `plans/` — `CONTRACT.md` (the shared API contract) + per-component plans (TUI / frontend / backend).
+- `plans/` — `CONTRACT.md` (the shared API contract) + per-component plans (TUI / frontend / backend),
+  and `plan-4-private-custodial-settlement.md` (v0.4: make payments private via Unlink — custodial
+  pooled model, real deposit + withdraw legs, ledger does the 50/50 split).
