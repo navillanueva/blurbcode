@@ -67,22 +67,38 @@ serving them is private.**
 
 ## 2. Prerequisites / blockers (do these first — Phase 0)
 
-### P0a — Resolve the Unlink pool token (HARD BLOCKER)
-The live smoke proved everything except moving funds, because the faucet rejected the configured
-token: `invalid token: token not supported by faucet`. Per Unlink docs + the partner-integrations
-tutorial, the pool token (`usdc`) is **"the Arc USDC token address configured for your environment"** —
-a value bound to the Unlink **project** behind `UNLINK_API_KEY`, **not** the canonical Arc USDC
-`0x3600…0000` (which `ARC_USDC_ADDRESS` currently points at). There is **no API** to enumerate it
-(`/info/environment` returns only pool/permit2/chain; no token list).
+### P0a — Pool token & decimals (RESOLVED 2026-06-13)
+The shielded pool's token on arc-testnet is **`0x4F592595Ec2dcb794d949551554436807565b300`** — the
+`ULNKMock` test token (symbol `ULNKm`), confirmed on-chain (faucet mint tx + `decimals()`/`symbol()`
+reads). It is **NOT** the canonical Arc USDC `0x3600…0000` — that's why `requestPrivateTokens` returned
+`token not supported by faucet`. No API enumerates it; it's the project token behind `UNLINK_API_KEY`.
+Top up the treasury EOA with more ULNKm via the SDK faucet (`faucet.requestTestTokens` → mints public
+ERC-20 to an EVM address) or whatever faucet minted the current 20 ULNKm.
 
-**Action:** obtain the arc-testnet pool token address from the Unlink dashboard (the project tied to
-`UNLINK_API_KEY`) or the engine provider, and set **`ARC_USDC_ADDRESS` = that token**. This is the
-token the advertiser sends on-chain and the backend deposits — it must be the pool's supported token
-end-to-end. Update `visual-web/lib/arc.ts:ARC_USDC_ADDRESS` to match (the web transfer must use the
-same token). The canonical-USDC Circle Gateway leg is unused in v0.4, so there's no conflict.
+⚠️ **DECIMALS = 18, not 6 — handle this carefully.** The money layer assumes USDC = 6dp
+(`packages/kickback/src/money.ts` `USDC_DECIMALS = 6`; `config.ts` sets `Token.decimals = 6`;
+`visual-web/lib/{money,arc}.ts` hardcode 6). ULNKMock is **18dp** (the faucet minted `20e18`). Real
+USDC on mainnet IS 6dp, so make decimals **configurable**, not a blanket constant swap:
+- Add **`ARC_USDC_DECIMALS`** (default `6`; **set `18` on arc-testnet for ULNKMock**) to env +
+  `.env.example` + Railway. `readKickbackEnv` (`packages/kickback/src/config.ts`) must read it into
+  `arc.usdc.decimals` instead of hardcoding `USDC_DECIMALS`.
+- Pick **one** base-unit convention end-to-end = the token's decimals. Every human↔base conversion must
+  pass `token.decimals` to `toBaseUnits`/`fromBaseUnits` (both already accept a decimals arg, default 6).
+  Audit + fix callers: `real.ts` `realSmoke` (`fromBaseUnits(bal)`, `toBaseUnits(opts.unlinkWithdraw)`),
+  web campaign create/display, and any smoke/log output. Ledger amounts stay abstract base-unit
+  integers — internally consistent as long as the SAME decimals is used at every boundary; on-chain a
+  budget of `1e18` base units = 1 ULNKm.
+- The web must NOT hardcode 6: `GET /api/treasury` (§3.5) returns `decimals` — the advertiser transfer
+  (`parseUnits(amount, decimals)`) and all display (`formatUnits`) read it from there.
 
-> **Verification:** once set, `KICKBACK_SMOKE_CONFIRM=1 bun run smoke --unlink-deposit 0.10
-> --unlink-withdraw 0.05` (new flag, §6) must complete a real deposit→withdraw round-trip.
+**Already set during planning** (root `.env` + `visual-api/.env`, both gitignored):
+`ARC_USDC_ADDRESS=0x4F592595Ec2dcb794d949551554436807565b300`, `ARC_USDC_DECIMALS=18`. Still TODO:
+mirror to Railway `visual-api` + `visual-web/lib/arc.ts`, and **wire `ARC_USDC_DECIMALS` in code**
+(config currently still hardcodes 6 — read-only smoke works because balance is 0; deposit/withdraw amount
+math will be wrong until threaded).
+
+> **Verification:** `KICKBACK_SMOKE_CONFIRM=1 bun run smoke --unlink-deposit 0.10 --unlink-withdraw 0.05`
+> (§5) must complete a real deposit→withdraw round-trip once decimals are threaded.
 
 ### P0b — SDK distribution for Railway (HARD BLOCKER for deploy)
 `@unlink-xyz/sdk` is a **restricted/private** npm package. `bun install` silently drops it; locally
@@ -112,7 +128,9 @@ payer EOA holds the **pool token** (P0a), not only `0x3600…0000` — these may
 ## 3. Backend changes (`visual-api`)
 
 ### 3.1 Config & env (`src/config.ts` / `src/env.ts`, `.env.example`, `@kickback/config`)
-- `ARC_USDC_ADDRESS` → the pool token (P0a).
+- `ARC_USDC_ADDRESS` → the pool token `0x4F592595Ec2dcb794d949551554436807565b300` (ULNKMock, P0a).
+- `ARC_USDC_DECIMALS` → **18** on arc-testnet (default 6 for mainnet USDC). Read into `arc.usdc.decimals`
+  in `readKickbackEnv`; thread `token.decimals` through every `toBaseUnits`/`fromBaseUnits` call (P0a).
 - `TREASURY_ADDRESS` — the EOA advertisers pay into. **Default to `PAYER_ADDRESS`** (treasury and
   Gateway payer are the same EOA). Surface via a new `GET /api/treasury` (§3.5) and as
   `NEXT_PUBLIC_TREASURY_ADDRESS` for the web.
@@ -400,8 +418,9 @@ gas.
 ---
 
 ## 10. Open questions / TODO(human)
-- **Pool token address** (arc-testnet, from the Unlink project) — the one true blocker. Everything else
-  is built once this is known.
+- **Pool token address — RESOLVED:** `0x4F592595Ec2dcb794d949551554436807565b300` (ULNKMock, **18dp**;
+  see P0a). Remaining work is threading `ARC_USDC_DECIMALS=18` through the money layer (config still
+  hardcodes 6) and mirroring the env to Railway + `visual-web/lib/arc.ts`.
 - **Treasury = payer EOA?** Plan assumes yes (reuse `PAYER_*`). Split into a dedicated `TREASURY_*` if
   you want the deposit signer separate from the Gateway payer.
 - **Confirmations** (`FUND_MIN_CONFIRMATIONS`) — 1 is fine on testnet; raise for mainnet.
