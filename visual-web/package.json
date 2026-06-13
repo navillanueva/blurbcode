@@ -1,0 +1,25 @@
+{
+  "name": "visual-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual Code Web — Next.js frontend (Dynamic wallet + Arc testnet). Talks to the visual-api backend over HTTP.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@dynamic-labs/ethereum": "4.88.6",
+    "@dynamic-labs/sdk-react-core": "4.88.6",
+    "next": "16.2.9",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "viem": "2.52.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.3",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "6.0.3"
+  }
+}
