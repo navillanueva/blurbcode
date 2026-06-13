@@ -5,6 +5,11 @@ import { useDirectory } from "../../context/directory"
 import { useConnected } from "../../component/use-connected"
 import { createStore } from "solid-js/store"
 import { useRoute } from "../../context/route"
+import { AdSlot } from "../../kickback/ad-slot"
+
+// NOTE: this Footer is currently unreferenced (dead code) — the live status line is
+// the `home_footer` slot in feature-plugins/home/footer.tsx. We keep the Kickback ad
+// slot wired here too so this component stays correct if it is ever revived.
 
 export function Footer() {
   const { theme } = useTheme()
@@ -52,6 +57,7 @@ export function Footer() {
   return (
     <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0}>
       <text fg={theme.textMuted}>{directory()}</text>
+      <AdSlot />
       <box gap={2} flexDirection="row" flexShrink={0}>
         <Switch>
           <Match when={store.welcome}>

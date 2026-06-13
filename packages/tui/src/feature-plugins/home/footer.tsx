@@ -4,6 +4,7 @@ import { createMemo, Match, Show, Switch } from "solid-js"
 import { abbreviateHome } from "../../runtime"
 import { useTuiPaths } from "../../context/runtime"
 import { useHomeSessionDestination } from "../../routes/home/session-destination"
+import { AdSlot } from "../../kickback/ad-slot"
 
 const id = "internal:home-footer"
 
@@ -75,6 +76,9 @@ function View(props: { api: TuiPluginApi }) {
     >
       <Directory api={props.api} />
       <Mcp api={props.api} />
+      <box flexGrow={1} />
+      {/* Kickback AI status-line ad slot — display-only, never enters the LLM context. */}
+      <AdSlot />
       <box flexGrow={1} />
       <Version api={props.api} />
     </box>

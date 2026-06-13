@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@kickback-ai/providers",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "description": "Kickback AI provider interfaces (wallet / privacy / settlement) with offline mock implementations",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./mock": "./src/mock/index.ts",
+    "./real": "./src/real/index.ts"
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "3.0.4",
+    "@unlink-xyz/sdk": "0.3.0-canary.552",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:"
+  }
+}
