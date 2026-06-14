@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BlurbCode — ETHGlobal NYC 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy-top: #1b2e5e;
+    --navy-bot: #0d1a38;
+    --navy-flat: #15244d;
+    --green: #9bff3c;
+    --white: #eef4fc;
+    --blue: #6c8cff;
+    --muted: #96a8c9;
+    --card: rgba(108, 140, 255, 0.07);
+    --card-line: rgba(108, 140, 255, 0.22);
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--navy-bot);
+    color: var(--white);
+    font-family: var(--sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(120% 90% at 50% 36%, rgba(155, 255, 60, 0.07), transparent 55%),
+      linear-gradient(160deg, var(--navy-top) 0%, var(--navy-bot) 78%);
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: clamp(40px, 7vw, 120px);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .slide.active { display: flex; opacity: 1; animation: rise 0.5s cubic-bezier(.2,.7,.2,1); }
+  @keyframes rise {
+    from { transform: translateY(18px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  /* ---- typography ---- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.1vw, 15px);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 26px;
+  }
+  h1 { font-size: clamp(40px, 6.6vw, 104px); font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(30px, 4.4vw, 68px); font-weight: 700; line-height: 1.08; letter-spacing: -0.02em; }
+  .lead { font-size: clamp(18px, 2vw, 30px); color: var(--muted); font-weight: 400; line-height: 1.45; max-width: 19ch; }
+  .lead.wide { max-width: 30ch; }
+  .big-num { color: var(--green); font-weight: 800; }
+  .indigo { color: var(--blue); }
+  .caption { margin-top: 34px; font-size: clamp(14px, 1.4vw, 21px); color: var(--muted); max-width: 44ch; line-height: 1.5; }
+  .caption strong { color: var(--white); font-weight: 600; }
+
+  /* ---- brand mark (CSS recreation of the favicon) ---- */
+  .mark {
+    position: relative;
+    width: clamp(96px, 12vw, 168px);
+    aspect-ratio: 1;
+    border-radius: 24%;
+    background: linear-gradient(160deg, var(--navy-top), var(--navy-bot));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.45);
+    display: grid;
+    place-items: center;
+    margin-bottom: 34px;
+  }
+  .mark::after {
+    content: "";
+    width: 20.5%;
+    height: 49%;
+    border-radius: 16% / 8%;
+    background: var(--green);
+    box-shadow: 0 0 22px 4px rgba(155,255,60,0.55), 0 0 60px 10px rgba(155,255,60,0.25);
+  }
+
+  .wordmark { font-size: clamp(44px, 7vw, 110px); font-weight: 800; letter-spacing: -0.03em; }
+  .wordmark .b { color: var(--white); }
+  .wordmark .c { color: var(--blue); }
+
+  .tagline { margin-top: 22px; font-size: clamp(18px, 2.1vw, 30px); color: var(--muted); font-weight: 500; }
+  .url { margin-top: 8px; font-family: var(--mono); font-size: clamp(14px, 1.4vw, 19px); color: var(--green); }
+
+  /* ---- stat grid ---- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 18px;
+    margin-top: 44px;
+    width: min(960px, 100%);
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 18px;
+    padding: 26px 20px;
+  }
+  .stat .n { font-size: clamp(26px, 3vw, 44px); font-weight: 800; color: var(--green); letter-spacing: -0.02em; }
+  .stat .n.indigo { color: var(--blue); }
+  .stat .l { margin-top: 8px; font-size: clamp(12px, 1.2vw, 15px); color: var(--muted); line-height: 1.4; }
+
+  /* ---- vs columns ---- */
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(20px, 4vw, 60px); align-items: center; margin-top: 50px; width: min(1000px, 100%); }
+  .vs .col { background: var(--card); border: 1px solid var(--card-line); border-radius: 22px; padding: 40px 28px; }
+  .vs .col.win { border-color: rgba(155,255,60,0.5); box-shadow: 0 0 40px rgba(155,255,60,0.12); }
+  .vs .who { font-family: var(--mono); font-size: clamp(13px, 1.3vw, 16px); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .vs .amt { font-size: clamp(42px, 6vw, 92px); font-weight: 800; margin-top: 14px; letter-spacing: -0.03em; }
+  .vs .amt.zero { color: var(--muted); }
+  .vs .amt.half { color: var(--green); }
+  .vs .sub { margin-top: 8px; color: var(--muted); font-size: clamp(13px, 1.3vw, 17px); }
+  .vs .arrow { font-size: clamp(22px, 3vw, 40px); color: var(--blue); }
+
+  /* ---- terminal / status-line motif ---- */
+  .term {
+    width: min(900px, 100%);
+    margin-top: 40px;
+    background: #0a142e;
+    border: 1px solid var(--card-line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.5);
+    text-align: left;
+    font-family: var(--mono);
+  }
+  .term .bar { display: flex; gap: 8px; padding: 13px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .term .bar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .term .bar .r { background: #ff5f57; } .term .bar .y { background: #febc2e; } .term .bar .g { background: #28c840; }
+  .term .body { padding: 22px 22px 14px; font-size: clamp(13px, 1.35vw, 17px); line-height: 1.9; color: var(--muted); }
+  .term .body .you { color: var(--white); }
+  .term .body .cur { color: var(--green); }
+  .term .status {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 22px;
+    background: rgba(108,140,255,0.06);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: clamp(12px, 1.25vw, 16px);
+  }
+  .term .status .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.3s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .term .status .working { color: var(--muted); }
+  .term .status .ad { margin-left: auto; color: var(--white); display: flex; align-items: center; gap: 10px; }
+  .term .status .ad .caret { color: var(--green); font-weight: 700; }
+  .term .status .ad .brand { color: var(--blue); }
+  .term .status .ad .earn { color: var(--green); }
+  .term .status .empty { margin-left: auto; color: rgba(150,168,201,0.4); font-style: italic; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 36px; }
+  .chip { font-family: var(--mono); font-size: clamp(12px, 1.2vw, 15px); color: var(--muted); border: 1px solid var(--card-line); border-radius: 999px; padding: 9px 18px; background: var(--card); }
+  .chip b { color: var(--white); font-weight: 600; }
+
+  /* ---- install CTA ---- */
+  .cta { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 30px; }
+  .cta .site { font-family: var(--mono); font-size: clamp(16px, 1.9vw, 26px); color: var(--green); font-weight: 600; letter-spacing: 0.01em; }
+  .install {
+    display: inline-flex; align-items: center; gap: 14px;
+    background: #0a142e; border: 1px solid rgba(155,255,60,0.35); border-radius: 12px;
+    padding: 14px 24px; font-family: var(--mono);
+    font-size: clamp(13px, 1.5vw, 20px);
+    box-shadow: 0 0 30px rgba(155,255,60,0.08);
+  }
+  .install .prompt { color: var(--green); font-weight: 700; }
+  .install .cmd { color: var(--white); }
+  .install .cmd .u { color: var(--blue); }
+
+  /* ---- loop steps ---- */
+  .loop { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 14px; margin-top: 44px; width: min(1040px, 100%); }
+  .step { flex: 1 1 180px; background: var(--card); border: 1px solid var(--card-line); border-radius: 16px; padding: 22px 18px; text-align: left; }
+  .step .k { font-family: var(--mono); color: var(--green); font-size: 13px; }
+  .step .t { margin-top: 10px; font-size: clamp(14px, 1.45vw, 19px); font-weight: 600; line-height: 1.3; }
+  .step .d { margin-top: 6px; font-size: clamp(12px, 1.15vw, 14px); color: var(--muted); line-height: 1.4; }
+  .arrow-sm { align-self: center; color: var(--blue); font-size: 22px; }
+
+  /* ---- chrome: progress, counter, notes ---- */
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--green); box-shadow: 0 0 12px var(--green); transition: width 0.35s ease; z-index: 30; }
+  .counter { position: fixed; bottom: 22px; right: 26px; font-family: var(--mono); font-size: 13px; color: var(--muted); z-index: 30; }
+  .brandtag { position: fixed; bottom: 22px; left: 26px; font-family: var(--mono); font-size: 13px; color: var(--muted); z-index: 30; }
+  .brandtag b { color: var(--white); } .brandtag .g { color: var(--green); }
+  .hint { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 12px; color: rgba(150,168,201,0.5); z-index: 30; }
+
+  .notes {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: rgba(6, 12, 28, 0.97);
+    border-top: 1px solid var(--card-line);
+    padding: 22px 32px 40px;
+    font-size: 17px; line-height: 1.55; color: var(--white);
+    transform: translateY(110%); transition: transform 0.3s ease;
+    z-index: 40; max-height: 42vh; overflow: auto;
+  }
+  .notes.show { transform: translateY(0); }
+  .notes h4 { font-family: var(--mono); color: var(--green); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .notes ul { margin-left: 18px; } .notes li { margin: 4px 0; color: var(--muted); }
+  .notes li b { color: var(--white); }
+
+  .footnote { position: absolute; bottom: 54px; left: 50%; transform: translateX(-50%); font-size: 11px; color: rgba(150,168,201,0.55); max-width: 80ch; line-height: 1.5; }
+
+  @media (max-width: 640px) {
+    .vs { grid-template-columns: 1fr; } .vs .arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide active" data-notes="
+    <h4>Open</h4><ul>
+    <li>Hi, we built <b>BlurbCode</b> at this hackathon.</li>
+    <li>One line: <b>get paid while your AI agent works — you keep half the ad revenue.</b></li>
+    <li>Let me show you the gap we found, then I'll demo it live.</li></ul>">
+    <div class="mark"></div>
+    <div class="wordmark"><span class="b">blurb</span><span class="c">code</span></div>
+    <div class="tagline">Get paid while your agent works — you keep half.</div>
+    <div class="url">ETHGlobal NYC 2026 · blurbcode.xyz</div>
+  </section>
+
+  <!-- 2 — THE NEW AUDIENCE -->
+  <section class="slide" data-notes="
+    <h4>The audience appeared overnight</h4><ul>
+    <li>A billion people now sit in front of an AI agent every single week.</li>
+    <li>For developers it's near-universal — ~90% use coding agents, and agents already write ~40% of new code.</li>
+    <li><b>Two years ago this audience was essentially zero.</b> It is the fastest-forming attention pool in tech.</li></ul>">
+    <div class="eyebrow">A new audience, overnight</div>
+    <h2>A billion people now work<br>alongside an <span class="indigo">AI agent</span> every week.</h2>
+    <div class="stats">
+      <div class="stat"><div class="n">~1B</div><div class="l">ChatGPT weekly active users (2026)</div></div>
+      <div class="stat"><div class="n">~90%</div><div class="l">of developers use AI coding agents</div></div>
+      <div class="stat"><div class="n">~40%</div><div class="l">of new code is written by agents</div></div>
+      <div class="stat"><div class="n">2.5B</div><div class="l">AI prompts sent every day</div></div>
+    </div>
+    <div class="caption">Highly engaged, high-income, high-intent technical users — sitting still, watching a screen, every day.</div>
+  </section>
+
+  <!-- 3 — ATTENTION = MONEY (Instagram mirror) -->
+  <section class="slide" data-notes="
+    <h4>The internet already monetized attention</h4><ul>
+    <li>Instagram: ~2B users → about <b>$80B a year</b> in ads. That's ~$40–55 from every user, every year.</li>
+    <li>This is the entire business model of the consumer internet — capture attention, sell it to advertisers.</li>
+    <li>Hold that number — $40–55 per user — we'll come back to it.</li></ul>">
+    <div class="eyebrow">The internet runs on attention</div>
+    <h2>Instagram turns attention<br>into <span class="big-num">~$80B/year</span>.</h2>
+    <div class="stats">
+      <div class="stat"><div class="n indigo">~2B</div><div class="l">monthly Instagram users</div></div>
+      <div class="stat"><div class="n">~$80B</div><div class="l">annual ad revenue (2025)</div></div>
+      <div class="stat"><div class="n">$40–55</div><div class="l">ad revenue per user, per year</div></div>
+    </div>
+    <div class="caption">This is the whole playbook of the consumer internet: <strong>capture attention, sell it to advertisers.</strong></div>
+  </section>
+
+  <!-- 4 — THE BLIND SPOT -->
+  <section class="slide" data-notes="
+    <h4>The blind spot</h4><ul>
+    <li>But the agent audience has <b>zero ads</b>. No inventory. No one is marketing to them there.</li>
+    <li>Every day, devs stare at a spinner — &quot;working…&quot; — while the agent runs. That attention is 100% wasted.</li>
+    <li>It's the most valuable audience on the internet, and it's completely unexploited.</li></ul>">
+    <div class="eyebrow">The blind spot</div>
+    <h2>The agent audience is<br><span class="big-num">100% unmonetized.</span></h2>
+    <div class="term">
+      <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+      <div class="body">
+        <div><span class="cur">›</span> <span class="you">refactor the auth module and add tests</span></div>
+        <div class="cur">⠋ working… <span style="opacity:.55">editing 6 files · running test suite</span></div>
+      </div>
+      <div class="status">
+        <span class="dot"></span><span class="working">agent is thinking…</span>
+        <span class="empty">— this space sells nothing, pays no one —</span>
+      </div>
+    </div>
+    <div class="caption">Millions of high-intent developers, watching a spinner — and <strong>nobody is reaching them there.</strong></div>
+  </section>
+
+  <!-- 5 — THE WEDGE -->
+  <section class="slide" data-notes="
+    <h4>The wedge — why devs opt in</h4><ul>
+    <li>Here's the asymmetry. The Instagram user generates $40–55 a year and sees <b>$0</b> of it.</li>
+    <li>On BlurbCode the developer keeps <b>50%</b> of every ad served on their machine.</li>
+    <li><b>We don't sell your attention — we cut you in.</b> That's why a developer turns it on instead of blocking it.</li></ul>">
+    <div class="eyebrow">The asymmetry</div>
+    <h2>We don't sell your attention.<br>We <span class="big-num">cut you in.</span></h2>
+    <div class="vs">
+      <div class="col">
+        <div class="who">Instagram user</div>
+        <div class="amt zero">$0</div>
+        <div class="sub">of the ad revenue they generate</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="col win">
+        <div class="who">BlurbCode developer</div>
+        <div class="amt half">50%</div>
+        <div class="sub">of every ad served while their agent works</div>
+      </div>
+    </div>
+    <div class="caption">The kickback is the wedge: developers <strong>opt in</strong> because the ad pays <em>them</em>.</div>
+  </section>
+
+  <!-- 6 — DEMO -->
+  <section class="slide" data-notes="
+    <h4>DEMO — switch to terminal</h4><ul>
+    <li>One line first: <b>BlurbCode is an ad marketplace built into the agent's wait-state</b> — a fork of OpenCode.</li>
+    <li>Show: advertiser funds a campaign on the web → ad appears in the TUI status line → impressions tick → <b>/me</b> earnings rise → withdraw.</li>
+    <li>Call out the moment the dev's balance goes up — that's the kickback, live. Settles on <b>Arc</b>, private via <b>Unlink</b>, wallets by <b>Dynamic</b>.</li>
+    <li>If anything stalls: mock mode shows the full flow; real on-chain settlement is the bonus.</li>
+    <li><i>Sources:</i> ChatGPT ~1B WAU & 2.5B prompts/day (TechCrunch, Backlinko 2026) · ~90% dev AI adoption, ~40% AI-written code (JetBrains / Stack Overflow / Index.dev) · Instagram ~2B users, ~$80B 2025 ad revenue, ~$40–55 ARPU (Business of Apps, DemandSage, Resourcera).</li></ul>">
+    <div class="eyebrow">An ad marketplace in the agent's wait-state</div>
+    <h1>Live demo</h1>
+    <div class="term" style="margin-top:44px;">
+      <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+      <div class="body">
+        <div><span class="cur">›</span> <span class="you">ship the landing page</span></div>
+        <div class="cur">⠿ working… <span style="opacity:.55">building · deploying</span></div>
+      </div>
+      <div class="status">
+        <span class="dot"></span><span class="working">agent is working…</span>
+        <span class="ad"><span class="caret">›</span> <span class="brand">Acme DB</span> — ship faster on Postgres &nbsp; <span class="earn">+$0.0021</span></span>
+      </div>
+    </div>
+    <div class="caption">Same wasted space — now it pays the developer.</div>
+    <div class="cta">
+      <div class="site">blurbcode.xyz</div>
+      <div class="install">
+        <span class="prompt">$</span>
+        <span class="cmd">curl -fsSL <span class="u">https://blurbcode.xyz/install</span> | bash</span>
+      </div>
+    </div>
+    <div class="chips" style="margin-top:22px;">
+      <span class="chip"><b>Arc</b> · gas-free nanopayments</span>
+      <span class="chip"><b>Unlink</b> · private settlement</span>
+      <span class="chip"><b>Dynamic</b> · embedded wallets</span>
+    </div>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="counter" id="counter">1 / 8</div>
+<div class="brandtag"><span class="g">›</span> <b>blurb</b>code</div>
+<div class="hint">← → navigate · F fullscreen · N notes</div>
+
+<div class="notes" id="notes"></div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  const notes = document.getElementById('notes');
+  let i = 0, notesOpen = false;
+
+  function render() {
+    slides.forEach((s, n) => s.classList.toggle('active', n === i));
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    if (notesOpen) renderNotes();
+  }
+  function renderNotes() {
+    notes.innerHTML = slides[i].dataset.notes || '<h4>No notes</h4>';
+  }
+  function go(n) { i = Math.max(0, Math.min(slides.length - 1, n)); render(); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    else if (e.key.toLowerCase() === 'n') { notesOpen = !notesOpen; notes.classList.toggle('show', notesOpen); if (notesOpen) renderNotes(); }
+  });
+  document.getElementById('deck').addEventListener('click', (e) => {
+    if (e.clientX < window.innerWidth * 0.32) go(i - 1); else go(i + 1);
+  });
+  render();
+</script>
+</body>
+</html>

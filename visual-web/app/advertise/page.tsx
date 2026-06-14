@@ -35,6 +35,8 @@ export default function AdvertisePage() {
   const verified = me?.worldIdVerified ?? false
 
   const [form, setForm] = useState(EMPTY)
+  // Display name of the chosen logo file (the data URL itself lives in form.logo).
+  const [logoName, setLogoName] = useState("")
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +71,7 @@ export default function AdvertisePage() {
   async function onLogoFile(file: File | null) {
     if (!file) {
       set("logo", "")
+      setLogoName("")
       return
     }
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
@@ -88,9 +91,15 @@ export default function AdvertisePage() {
         reader.readAsDataURL(file)
       })
       set("logo", dataUrl)
+      setLogoName(file.name)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
+  }
+
+  function clearLogo() {
+    set("logo", "")
+    setLogoName("")
   }
 
   // Real on-chain pay → fund: public USDC transfer to the treasury (advertiser
@@ -210,6 +219,7 @@ export default function AdvertisePage() {
 
   function reset() {
     setForm(EMPTY)
+    setLogoName("")
     setCreated(null)
     setLive(null)
     setStatus(null)
@@ -344,23 +354,30 @@ export default function AdvertisePage() {
                   <span>Logo</span>
                   <span className="field__hint">optional · square · PNG/JPG/WebP/GIF ≤ 200KB</span>
                 </label>
-                <input
-                  id="adv-logo"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="input"
-                  onChange={(e) => void onLogoFile(e.target.files?.[0] ?? null)}
-                  disabled={locked}
-                />
-                {form.logo ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded data URL preview */}
-                    <img src={form.logo} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />
-                    <button type="button" className="linkbtn" onClick={() => set("logo", "")} disabled={locked}>
-                      Remove
-                    </button>
-                  </div>
-                ) : null}
+                <div className={`file-upload${locked ? " is-disabled" : ""}`}>
+                  <label className="file-upload__pick">
+                    Choose image
+                    <input
+                      id="adv-logo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={(e) => void onLogoFile(e.target.files?.[0] ?? null)}
+                      disabled={locked}
+                    />
+                  </label>
+                  {form.logo ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- user-uploaded data URL preview */}
+                      <img className="file-upload__thumb" src={form.logo} alt="" />
+                      <span className="file-upload__name">{logoName || "Image selected"}</span>
+                      <button type="button" className="linkbtn" onClick={clearLogo} disabled={locked}>
+                        Remove
+                      </button>
+                    </>
+                  ) : (
+                    <span className="file-upload__name file-upload__name--muted">No file chosen</span>
+                  )}
+                </div>
               </div>
               <div className="field">
                 <label className="field__label" htmlFor="adv-budget">

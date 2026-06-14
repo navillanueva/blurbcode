@@ -492,6 +492,76 @@ a {
   height: 44px;
 }
 
+/* Styled file picker — hides the native control so it matches .input. */
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-height: 42px;
+  padding: 5px 10px 5px 5px;
+  border: 1px solid var(--g-400);
+  border-radius: 10px;
+  background: var(--g-100);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.file-upload:focus-within {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px rgba(102, 118, 179, 0.15);
+}
+.file-upload__pick {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--g-500);
+  border-radius: 8px;
+  background: var(--g-200);
+  color: var(--g-1000);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.file-upload__pick:hover {
+  border-color: var(--g-700);
+  background: var(--g-300);
+}
+.file-upload__pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.file-upload__thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1px solid var(--g-300);
+  flex-shrink: 0;
+}
+.file-upload__name {
+  font-size: 13px;
+  color: var(--g-1000);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-upload__name--muted {
+  color: var(--g-650);
+}
+.file-upload.is-disabled {
+  opacity: 0.55;
+}
+.file-upload.is-disabled .file-upload__pick {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .input-money {
   display: flex;
   align-items: center;
