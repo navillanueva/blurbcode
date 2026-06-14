@@ -214,3 +214,52 @@ packages. To give Visual Code the same one-liner:
   (`publish.ts`). Brew = maintaining a tap formula.
 - **Pragmatic path:** GitHub Release (mac + linux) + hosted renamed install script = a real
   `curl … | bash` for the platforms that matter, no npm. Add Windows + npm + brew later via CI.
+
+## FUTURE WORK — cross-chain USDC deposit (any chain → Arc) via Circle CCTP (post-MVP)
+
+*Scoped 2026-06-14 (feasibility only — NOT MVP/v0.4 scope). Goal: advertisers fund a campaign with
+USDC held on ANY chain (Ethereum / Base / Arbitrum / …) instead of needing Arc-native USDC first.
+Verdict: easier than a generic bridge — **Arc is Circle's own L1**, so this is Circle-provided tech,
+not custom bridging. Est. ~1–1.5 weeks for a working testnet path once the token decision below is made.*
+
+- **Why it's tractable.** Arc is a first-class **CCTP V2** chain — **domain `26`**, source + destination,
+  testnet + mainnet. Circle ships **Bridge Kit** (`@circle-fin/bridge-kit` + `@circle-fin/adapter-viem-v2`)
+  that wraps the burn→attest→mint flow into SDK calls. And our backend is **already an Arc signer**
+  (`cfg.payer` in `real-gateway.ts`/`real.ts`), so it can relay the destination mint with no new infra.
+- **Where it plugs in.** Only step 1 of the current fund flow changes (advertiser must hold Arc USDC).
+  New path rejoins the existing **verify → `privacy.deposit` (shield) → activate** unchanged:
+  1. Advertiser **burns USDC on their source chain** — `TokenMessengerV2.depositForBurn(amount,
+     destinationDomain=26, mintRecipient=treasury, burnToken=USDC, …)`. One signature, via Bridge Kit.
+  2. Backend polls Circle **Iris** (`/v2/messages`) for the attestation, then submits
+     `MessageTransmitterV2.receiveMessage(...)` on Arc via the existing payer signer (pays Arc gas in
+     USDC). `destinationCaller=bytes32(0)` ⇒ any address may relay; `mintRecipient` = treasury. USDC is
+     minted to the treasury on Arc → existing shield + activate continues.
+- **Recommend CCTP (via Bridge Kit), NOT Circle Gateway.** Gateway is a unified multi-chain *balance*
+  for repeated spend; wrong shape for one-shot campaign funding. CCTP delivers canonical USDC per deposit.
+- **Touch-points:**
+  - `visual-web/app/advertise/page.tsx` + `lib/arc.ts`/`lib/api.ts` — source-chain picker + Bridge Kit
+    `depositForBurn`; submit the **burn tx / CCTP nonce** instead of an Arc `paymentTxHash`; "bridging…" state.
+  - `visual-api/src/settlement/real-cctp.ts` *(new)* — Iris attestation poll + `receiveMessage` on Arc,
+    reusing `cfg.payer`/`cfg.arc`; mirror the 120s-wait + visible-failure pattern in `real.ts`.
+  - `service.ts` + `app.ts` fund route — accept `{ burnTxHash, sourceDomain }` as an alternative to
+    `paymentTxHash`; relay the mint before `privacy.deposit`.
+  - `verify-payment.ts` — CCTP verification variant: bind the deposit to the advertiser via the **burn's
+    source sender** (the Arc mint's Transfer `from` is `0x0`, so the current sender-match assumption
+    changes); use the **CCTP nonce** as the anti-replay key, replacing the `getCampaignByPaymentTx` guard.
+- **Gotchas / risks:**
+  - **Testnet token mismatch (the gating issue).** CCTP mints **canonical USDC (6dp, `0x3600…`)**, but
+    the arc-testnet Unlink pool token is **ULNKMock (18dp, `0x4F59…b300`)** — see STATUS + the POST-MVP
+    "Mainnet: real USDC as the pool token" open question + `plan-4 §2 P0a`. So this is **clean on mainnet**
+    (pool = canonical USDC); on testnet the bridged USDC lands at the treasury but won't feed the mock pool
+    without a swap or repointing the pool.
+  - Backend relayer pays Arc gas (USDC) for the mint — fits existing arch but needs retry/idempotency.
+  - **Latency/UX:** Standard transfer waits source-chain hard finality (~13–19 min from Ethereum; seconds
+    on fast chains) → campaign stays `draft` until mint+shield → needs a pending UI. Fast Transfer
+    (0–14 bps fee) shortens it on supported source chains; N/A for Arc-as-destination (Arc mint is fast).
+  - `approve` step on each source chain; Arc is **testnet** today (mainnet GA gates real advertiser funds).
+- **THE decision before building (testnet):** (a) demo the bridge leg only — USDC arrives at the treasury
+  on Arc, or (b) repoint the Unlink settlement token to canonical Arc USDC (6dp) so the full
+  bridge → shield → activate path runs end-to-end on testnet. Everything else is mechanical wiring.
+- **Refs:** Circle CCTP supported chains (Arc = domain 26) `developers.circle.com/cctp/cctp-supported-blockchains`;
+  CCTP technical guide (`depositForBurn`/`receiveMessage`/Iris) `developers.circle.com/cctp/technical-guide`;
+  Bridge Kit `developers.circle.com/bridge-kit`.

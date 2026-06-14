@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
+import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core"
 import { Logo } from "@/components/BlurbMark"
 import { MenuIcon } from "@/components/Icons"
 
@@ -16,13 +16,19 @@ const NAV = [
 
 export function Header() {
   const pathname = usePathname()
-  const { setShowAuthFlow } = useDynamicContext()
+  const { setShowAuthFlow, primaryWallet, handleLogOut } = useDynamicContext()
+  // Dynamic-side login state: flips as soon as the OTP/social flow finalizes,
+  // independent of whether the backend account-link (GET /api/me) succeeded.
+  const isLoggedIn = useIsLoggedIn()
   const [open, setOpen] = useState(false)
 
   // Close the mobile menu on route change.
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  const address = primaryWallet?.address
+  const shortAddr = address ? `${address.slice(0, 6)}···${address.slice(-4)}` : "Account"
 
   return (
     <header className="site-header">
@@ -48,9 +54,20 @@ export function Header() {
         </nav>
 
         <div className="header-right">
-          <button className="btn btn--ink btn--sign" onClick={() => setShowAuthFlow(true)}>
-            Sign in
-          </button>
+          {isLoggedIn ? (
+            <>
+              <Link href="/wallet" className="btn btn--ink btn--sign mono" title={address ?? undefined}>
+                {shortAddr}
+              </Link>
+              <button className="btn btn--ghost btn--sign" onClick={() => handleLogOut()}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button className="btn btn--ink btn--sign" onClick={() => setShowAuthFlow(true)}>
+              Sign in
+            </button>
+          )}
           <button
             className="nav-toggle"
             aria-label="Toggle navigation"
