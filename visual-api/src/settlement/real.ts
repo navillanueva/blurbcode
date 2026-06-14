@@ -89,7 +89,9 @@ export async function createRealSettlementService(env: Record<string, string | u
       const result = await handle.wait({ timeoutMs: 120_000 })
       if (result.status === "failed") throw new Error(`private deposit failed (txId=${handle.txId})`)
       poolCache = undefined // balance changed
-      return { txRef: `unlink-deposit:${handle.txId}` }
+      // Prefer the real on-chain deposit tx hash (linkable on Arcscan); fall back to
+      // the Unlink txId when the adapter didn't surface a hash.
+      return { txRef: result.txHash ?? `unlink-deposit:${handle.txId}` }
     },
 
     async withdrawEarnings({ accountId, amountBaseUnits, recipientEvmAddress }) {
@@ -111,7 +113,9 @@ export async function createRealSettlementService(env: Record<string, string | u
       const result = await handle.wait({ timeoutMs: 120_000 })
       if (result.status === "failed") throw new Error(`private withdraw failed (txId=${handle.txId})`)
       poolCache = undefined // balance changed
-      return { txRef: `unlink-withdraw:${handle.txId}` }
+      // Prefer the real on-chain payout tx hash (linkable on Arcscan); fall back to
+      // the Unlink txId when the adapter didn't surface a hash.
+      return { txRef: result.txHash ?? `unlink-withdraw:${handle.txId}` }
     },
 
     ...(privacy

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
 import { createDeviceToken, getTreasury, withdraw, type Treasury } from "@/lib/api"
 import { fromBaseUnits } from "@/lib/money"
+import { arcscanTxUrl } from "@/lib/arc"
 import { useMe } from "@/lib/useMe"
 import { Logo } from "@/components/BlurbMark"
 import { VerifyHuman } from "@/components/VerifyHuman"
@@ -324,6 +325,8 @@ function EarningsSection({
   const [withdrawing, setWithdrawing] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Settlement ref from the last withdraw — a real 0x tx hash links to Arcscan.
+  const [txRef, setTxRef] = useState<string | null>(null)
 
   // For a fresh demo account the accrued balance IS today's earnings, so the same
   // real number drives both "earnings today" and the withdrawable balance.
@@ -333,6 +336,7 @@ function EarningsSection({
   async function handleWithdraw() {
     setError(null)
     setMsg(null)
+    setTxRef(null)
     if (!authed) {
       setError("Sign in to withdraw your earnings.")
       return
@@ -340,7 +344,8 @@ function EarningsSection({
     setWithdrawing(true)
     try {
       const res = await withdraw()
-      setMsg(res.txRef ? `Withdrawal submitted (ref ${res.txRef}).` : "Withdrawal submitted.")
+      setTxRef(res.txRef ?? null)
+      setMsg("Withdrawal submitted.")
       // Earnings are now settled on the backend — re-fetch so the balance reflects the real 0.
       await onWithdrawn()
     } catch (err) {
@@ -402,6 +407,21 @@ function EarningsSection({
       {(msg || error) && (
         <div className={`banner ${error ? "banner--error" : "banner--ok"}`} style={{ marginBottom: 20 }}>
           {error ?? msg}
+          {!error && arcscanTxUrl(txRef) ? (
+            <>
+              {" "}
+              <a
+                href={arcscanTxUrl(txRef)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                View on Arcscan →
+              </a>
+            </>
+          ) : !error && txRef ? (
+            <span style={{ opacity: 0.7 }}> (ref {txRef})</span>
+          ) : null}
         </div>
       )}
 

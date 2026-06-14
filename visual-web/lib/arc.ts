@@ -46,3 +46,13 @@ export const arcTestnet = defineChain({
   blockExplorers: { default: { name: "Arcscan", url: ARC_EXPLORER_URL } },
   testnet: true,
 })
+
+/**
+ * Arcscan explorer link for a real on-chain tx hash (0x + 64 hex). Returns null for
+ * non-hash refs (e.g. Unlink txIds like `unlink-withdraw:<uuid>`) so callers only
+ * render a link when there's an actual transaction to open.
+ */
+export function arcscanTxUrl(ref?: string | null): string | null {
+  if (!ref) return null
+  return /^0x[0-9a-fA-F]{64}$/.test(ref) ? `${ARC_EXPLORER_URL}/tx/${ref}` : null
+}

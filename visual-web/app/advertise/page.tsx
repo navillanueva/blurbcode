@@ -5,7 +5,7 @@ import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
 import { isEthereumWallet } from "@dynamic-labs/ethereum"
 import { createPublicClient, erc20Abi, http } from "viem"
 import { ApiError, createCampaign, fundCampaign, getTreasury, type Campaign, type Treasury } from "@/lib/api"
-import { ARC_RPC_URL, arcTestnet } from "@/lib/arc"
+import { ARC_RPC_URL, arcTestnet, arcscanTxUrl } from "@/lib/arc"
 import { fromBaseUnits, toBaseUnits } from "@/lib/money"
 import { useMe } from "@/lib/useMe"
 import { Spinner } from "@/components/Spinner"
@@ -49,6 +49,8 @@ export default function AdvertisePage() {
   const [created, setCreated] = useState<Campaign | null>(null)
   // Set once the on-chain payment is verified + shielded into the private pool.
   const [live, setLive] = useState<Campaign | null>(null)
+  // The advertiser's public USDC payment tx (their on-chain deposit) — linkable on Arcscan.
+  const [depositTx, setDepositTx] = useState<string | null>(null)
 
   // Treasury is authoritative for token + decimals — never hardcode them. Until
   // loaded, fall back to 6dp; the real backend returns 18 for the arc-testnet pool token.
@@ -115,12 +117,17 @@ export default function AdvertisePage() {
 
     const token = treasury.token as `0x${string}`
     const to = treasury.address as `0x${string}`
-    // Dynamic drops the wallet client when the session expires; calling
-    // getWalletClient() then throws a cryptic "Unable to retrieve WalletClient".
-    // Catch it, reopen the auth flow, and surface an actionable reconnect message.
-    const walletClient = await primaryWallet.getWalletClient(String(treasury.chainId)).catch(() => {
+    // getWalletClient throws "Unable to retrieve WalletClient" when Dynamic can't
+    // reach the wallet provider — usually a stale session OR multiple wallet
+    // extensions (MetaMask + Core) fighting over window.ethereum. Surface the real
+    // cause (never mask it), log it, and reopen the connect flow so reconnecting is one click.
+    const walletClient = await primaryWallet.getWalletClient(String(treasury.chainId)).catch((e) => {
+      console.error("getWalletClient failed:", e)
       setShowAuthFlow(true)
-      throw new Error("Your wallet session expired. Reconnect your wallet, then try paying again.")
+      const detail = e instanceof Error ? e.message : String(e)
+      throw new Error(
+        `Couldn't access your wallet (${detail}). Reconnect it; if you have multiple wallet extensions enabled (e.g. MetaMask + Core), keep only one.`,
+      )
     })
     const sender = walletClient.account.address
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC_URL) })
@@ -145,6 +152,7 @@ export default function AdvertisePage() {
       functionName: "transfer",
       args: [to, amount],
     })
+    setDepositTx(hash) // the advertiser's public on-chain payment — linkable on Arcscan
     setStatus("Payment sent — waiting for on-chain confirmation…")
     await publicClient.waitForTransactionReceipt({ hash })
 
@@ -228,6 +236,7 @@ export default function AdvertisePage() {
     setLogoName("")
     setCreated(null)
     setLive(null)
+    setDepositTx(null)
     setStatus(null)
     setError(null)
   }
@@ -278,6 +287,22 @@ export default function AdvertisePage() {
               <dd className="mono" style={{ margin: 0, fontSize: 12.5, wordBreak: "break-all" }}>{live.url}</dd>
               <dt style={{ color: "var(--g-600)" }}>Budget</dt>
               <dd className="mono" style={{ margin: 0 }}>{budgetDisplay} USDC</dd>
+              {arcscanTxUrl(depositTx) ? (
+                <>
+                  <dt style={{ color: "var(--g-600)" }}>Payment</dt>
+                  <dd style={{ margin: 0 }}>
+                    <a
+                      className="mono"
+                      href={arcscanTxUrl(depositTx)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 12.5, color: "var(--indigo)", textDecoration: "underline" }}
+                    >
+                      View on Arcscan →
+                    </a>
+                  </dd>
+                </>
+              ) : null}
             </dl>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 22, fontSize: 12, color: "var(--g-650)", lineHeight: 1.5 }}>
