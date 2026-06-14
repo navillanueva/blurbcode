@@ -58,11 +58,15 @@ describe("full money loop (mock providers)", () => {
     campaignId = campaign.id
     expect(campaign.status).toBe("draft")
 
-    // Not served until funded.
-    const fund = await h.app.request(`/api/campaigns/${campaignId}/fund`, jsonInit("POST", {}, { cookie: advCookie }))
+    // Not served until funded. Fund carries the advertiser's payment tx hash.
+    const fund = await h.app.request(
+      `/api/campaigns/${campaignId}/fund`,
+      jsonInit("POST", { paymentTxHash: "0x" + "e".repeat(64) }, { cookie: advCookie }),
+    )
     expect(fund.status).toBe(200)
-    const funded = (await fund.json()) as { campaign: { status: string }; txRef: string }
+    const funded = (await fund.json()) as { campaign: { status: string; paymentTxHash: string | null }; txRef: string }
     expect(funded.campaign.status).toBe("active")
+    expect(funded.campaign.paymentTxHash).toBe("0x" + "e".repeat(64))
     expect(funded.txRef).toMatch(/^mock-fund:/)
   })
 

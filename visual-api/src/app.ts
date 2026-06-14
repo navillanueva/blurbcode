@@ -31,8 +31,21 @@ export interface AppDeps {
   secureCookies: boolean
   /** Allowed browser origins; null = reflect request origin (dev). */
   corsOrigins: string[] | null
+  /**
+   * Where advertisers send their public USDC payment (the treasury EOA) + which
+   * token/chain/decimals — surfaced via GET /api/treasury so the web hardcodes
+   * nothing. Null when not configured (mock/dev): the endpoint returns 503.
+   */
+  treasury: TreasuryInfo | null
   /** Injected clock (tests pass a fixed value); defaults to Date.now. */
   now?: () => number
+}
+
+export interface TreasuryInfo {
+  address: string
+  token: string
+  chainId: number
+  decimals: number
 }
 
 type Vars = { Variables: { accountId: string } }
@@ -69,12 +82,28 @@ export function createApp(deps: AppDeps) {
     }),
   )
 
-  app.get("/health", (c) =>
-    c.json({
+  app.get("/health", async (c) => {
+    // Reconciliation: the shielded pool must always cover outstanding developer
+    // earnings (liabilities). poolBalance is the live shielded balance when real
+    // (cached by the service); null when there is no on-chain pool (mock).
+    const liabilities = await repo.sumOutstandingEarnings(deps.db)
+    let poolBalance: bigint | null = null
+    try {
+      poolBalance = deps.settlement.getPoolBalance ? await deps.settlement.getPoolBalance() : null
+    } catch {
+      poolBalance = null
+    }
+    const healthy = poolBalance === null ? true : poolBalance >= liabilities
+    return c.json({
       ok: true,
       settlement: { mode: deps.settlement.mode, live: deps.settlement.live, notes: deps.settlement.notes },
-    }),
-  )
+      reconciliation: {
+        poolBalanceBaseUnits: poolBalance === null ? null : poolBalance.toString(),
+        liabilitiesBaseUnits: liabilities.toString(),
+        healthy,
+      },
+    })
+  })
 
   function setSessionCookie(c: Context, accountId: string): string {
     const token = signSession(accountId, deps.tokenSigningSecret)
@@ -194,27 +223,54 @@ export function createApp(deps: AppDeps) {
     return c.json({ campaigns })
   })
 
-  // CONTRACT: POST /api/campaigns/:id/fund → on-chain private deposit; activates the campaign
+  // Where advertisers send their public USDC payment, + which token/chain/decimals.
+  // The web reads this instead of hardcoding any address or decimal count.
+  app.get("/api/treasury", (c) => {
+    if (!deps.treasury) return c.json({ ok: false, error: "treasury not configured" }, 503)
+    return c.json(deps.treasury)
+  })
+
+  // CONTRACT: POST /api/campaigns/:id/fund → verify the advertiser's public payment,
+  // then shield the budget into the private pool (Unlink); activates the campaign.
+  // Body: { paymentTxHash } (required in real mode; ignored in mock).
   app.post("/api/campaigns/:id/fund", sessionAuth, async (c) => {
     const accountId = c.get("accountId")
     const id = c.req.param("id")
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+    const paymentTxHash = asString(body?.["paymentTxHash"])
+
     const campaign = await repo.getCampaignById(deps.db, id)
     if (!campaign) return c.json({ ok: false, error: "campaign not found" }, 404)
     const owned = await repo.listCampaignsByAdvertiser(deps.db, accountId)
     if (!owned.some((x) => x.id === id)) return c.json({ ok: false, error: "forbidden" }, 403)
-    const account = await repo.getAccountById(deps.db, accountId)
 
+    // Idempotency: an already-funded campaign returns success without re-depositing.
+    if (campaign.status === "active" && campaign.paymentTxHash) {
+      return c.json({ campaign, txRef: null, alreadyFunded: true })
+    }
+    // Reuse guard: a payment hash can fund at most one campaign.
+    if (paymentTxHash) {
+      const other = await repo.getCampaignByPaymentTx(deps.db, paymentTxHash)
+      if (other && other.id !== id) {
+        return c.json({ ok: false, error: "paymentTxHash already used to fund another campaign" }, 409)
+      }
+    }
+
+    const account = await repo.getAccountById(deps.db, accountId)
     let txRef: string
     try {
       const res = await deps.settlement.fundCampaign({
         campaignId: id,
         amountBaseUnits: BigInt(campaign.budgetBaseUnits),
         advertiserAddress: account?.address ?? "",
+        paymentTxHash,
       })
       txRef = res.txRef
     } catch (e) {
+      // Deposit/verify failed → campaign stays draft, payment not consumed (retryable).
       return c.json({ ok: false, error: `funding failed: ${errMsg(e)}` }, 502)
     }
+    if (paymentTxHash) await repo.setCampaignPaymentTx(deps.db, id, paymentTxHash)
     const activated = await repo.activateCampaign(deps.db, id)
     await repo.recordSettlement(deps.db, {
       accountId,

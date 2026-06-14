@@ -26,16 +26,23 @@ service a public URL.
 - `POST /api/auth/import` `{ privateKey }` → `{ address, ok }` (fallback; custodial, key stored encrypted).
 - `POST /api/device-tokens` → `{ token }` (issue a TUI device token for the logged-in account).
 - `POST /api/campaigns` `{ advertiser, text, url, bidBaseUnits, budgetBaseUnits }` → `{ campaign }`.
-- `POST /api/campaigns/:id/fund` → triggers the on-chain private deposit (Unlink on Arc) from the
-  advertiser's wallet; sets `budgetRemaining`.
+- `GET /api/treasury` → `{ address, token, chainId, decimals }` — the EOA the advertiser sends their
+  public USDC budget to, the token to send, and its decimals. The web reads this (no hardcoding).
+- `POST /api/campaigns/:id/fund` `{ paymentTxHash }` → verifies the advertiser's public USDC transfer
+  to the treasury (real mode), then does a private Unlink **deposit** of the budget into the pool and
+  activates the campaign. Idempotent per campaign; a `paymentTxHash` funds at most one campaign (409 on
+  reuse). `paymentTxHash` is ignored in mock mode.
 - `GET /api/campaigns` → advertiser's campaigns + spend.
 - `GET /api/me` → `{ address, balanceBaseUnits, role }`.
-- `POST /api/withdraw` → settle earnings to the account's wallet (Gateway x402 + Unlink transfer).
+- `POST /api/withdraw` → settle earnings to the account's wallet via a private Unlink **withdraw** from
+  the pool (waits for terminal; never zeroes earnings if the payout fails).
 
 ## Amounts & chain
-- All amounts are **USDC base units (6 dec) as strings** (`"1000000"` = 1 USDC). Reuse
-  `packages/kickback`'s `toBaseUnits`/`fromBaseUnits`.
-- Arc testnet: chain `5042002`, USDC ERC-20 `0x3600000000000000000000000000000000000000`, Unlink engine
+- All amounts are **token base units as strings** (`"1000000"` = 1 USDC at 6 dec). Reuse
+  `packages/kickback`'s `toBaseUnits`/`fromBaseUnits` — pass the token's decimals. **Decimals are
+  configurable** (`ARC_USDC_DECIMALS`): USDC is 6, but the arc-testnet Unlink pool token (ULNKMock,
+  `0x4F592595Ec2dcb794d949551554436807565b300`) is **18**. Clients read decimals from `GET /api/treasury`.
+- Arc testnet: chain `5042002`, settlement/pool token from `ARC_USDC_ADDRESS`, Unlink engine
   `https://arc-testnet-production-api.unlink.xyz`, Gateway via `@circle-fin/x402-batching`.
 
 ## Postgres schema (Plan 3 owns; minimal MVP)

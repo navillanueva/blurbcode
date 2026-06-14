@@ -2,11 +2,12 @@
 // the (idempotent) schema, builds the settlement service + Dynamic verifier, and
 // serves the Hono app with Bun.serve (via the default export).
 
-import { createApp } from "./app"
+import { createApp, type TreasuryInfo } from "./app"
 import { createDynamicVerifier } from "./auth/dynamic"
 import { createDatabase } from "./db/index"
 import { applySchema } from "./db/migrate"
 import { loadServerConfig } from "./env"
+import { readKickbackEnv } from "@kickback/config"
 import { createSettlementService } from "./settlement/factory"
 
 const config = loadServerConfig()
@@ -19,6 +20,13 @@ const dynamicVerifier = createDynamicVerifier({
   serverApiKey: config.dynamic.serverApiKey,
 })
 
+// Treasury info for GET /api/treasury (the EOA advertisers pay + token/chain/decimals).
+const kb = readKickbackEnv()
+const treasury: TreasuryInfo | null =
+  kb.arc && kb.treasuryAddress
+    ? { address: kb.treasuryAddress, token: kb.arc.usdc.address, chainId: kb.arc.chainId, decimals: kb.arc.usdc.decimals }
+    : null
+
 const app = createApp({
   db,
   settlement,
@@ -26,6 +34,7 @@ const app = createApp({
   tokenSigningSecret: config.tokenSigningSecret,
   secureCookies: config.secureCookies,
   corsOrigins: config.corsOrigins,
+  treasury,
 })
 
 console.log(`visual-api listening on :${config.port} (settlement=${settlement.mode})`)

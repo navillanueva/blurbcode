@@ -70,6 +70,8 @@ export interface CampaignRow {
   budgetBaseUnits: string
   budgetRemainingBaseUnits: string
   status: string
+  /** Advertiser's on-chain payment tx hash once funded (real mode); null otherwise. */
+  paymentTxHash: string | null
 }
 
 function toCampaignRow(r: typeof campaigns.$inferSelect): CampaignRow {
@@ -82,6 +84,7 @@ function toCampaignRow(r: typeof campaigns.$inferSelect): CampaignRow {
     budgetBaseUnits: r.budgetBaseUnits,
     budgetRemainingBaseUnits: r.budgetRemainingBaseUnits,
     status: r.status,
+    paymentTxHash: r.paymentTxHash ?? null,
   }
 }
 
@@ -125,6 +128,25 @@ export async function getCampaignById(db: Database, id: string): Promise<Campaig
 export async function activateCampaign(db: Database, id: string): Promise<CampaignRow | null> {
   const [row] = await db.update(campaigns).set({ status: "active" }).where(eq(campaigns.id, id)).returning()
   return row ? toCampaignRow(row) : null
+}
+
+/** Bind the advertiser's verified on-chain payment tx to the campaign (real mode). */
+export async function setCampaignPaymentTx(db: Database, id: string, paymentTxHash: string): Promise<void> {
+  await db.update(campaigns).set({ paymentTxHash }).where(eq(campaigns.id, id))
+}
+
+/** Find a campaign already bound to `paymentTxHash` (idempotency / reuse guard). */
+export async function getCampaignByPaymentTx(db: Database, paymentTxHash: string): Promise<CampaignRow | null> {
+  const [row] = await db.select().from(campaigns).where(eq(campaigns.paymentTxHash, paymentTxHash))
+  return row ? toCampaignRow(row) : null
+}
+
+/** Total outstanding developer earnings (pool must always cover this — /health). */
+export async function sumOutstandingEarnings(db: Database): Promise<bigint> {
+  const [row] = await db
+    .select({ total: sql<string>`coalesce(sum(${earnings.balanceBaseUnits}), 0)` })
+    .from(earnings)
+  return BigInt(row?.total ?? "0")
 }
 
 export interface CampaignWithSpend extends CampaignRow {

@@ -6,8 +6,8 @@
 // this file stays free of the Unlink SDK import.
 //
 //   bun run smoke                         # read-only status
-//   # private leg (makes payments private via Unlink — no x402 seller URL needed):
-//   KICKBACK_SMOKE_CONFIRM=1 bun run smoke --unlink-faucet --unlink-withdraw 0.10
+//   # private leg (the deliverable — deposit from treasury → pool, then payout):
+//   KICKBACK_SMOKE_CONFIRM=1 bun run smoke --unlink-deposit 0.10 --unlink-withdraw 0.05
 //   # gateway leg (optional Circle x402 spend rail):
 //   KICKBACK_SMOKE_CONFIRM=1 bun run smoke --deposit 0.10 --pay https://seller/x402
 
@@ -25,6 +25,7 @@ interface RealModule {
     deposit?: string
     pay?: string
     unlinkFaucet?: boolean
+    unlinkDeposit?: string
     unlinkWithdraw?: string
     confirm: boolean
   }): Promise<void>
@@ -46,6 +47,7 @@ async function main() {
     deposit: arg("--deposit"),
     pay: arg("--pay"),
     unlinkFaucet: flag("--unlink-faucet"),
+    unlinkDeposit: arg("--unlink-deposit"),
     unlinkWithdraw: arg("--unlink-withdraw"),
     confirm: process.env.KICKBACK_SMOKE_CONFIRM === "1",
   })

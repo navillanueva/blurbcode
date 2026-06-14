@@ -1,14 +1,19 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { DynamicWidget } from "@dynamic-labs/sdk-react-core"
+import { DynamicWidget, useDynamicContext } from "@dynamic-labs/sdk-react-core"
+import { isEthereumWallet } from "@dynamic-labs/ethereum"
 import Link from "next/link"
+import { createPublicClient, erc20Abi, http } from "viem"
 import {
   createCampaign,
   fundCampaign,
+  getTreasury,
   listCampaigns,
   type Campaign,
+  type Treasury,
 } from "@/lib/api"
+import { ARC_RPC_URL, arcTestnet } from "@/lib/arc"
 import { fromBaseUnits, toBaseUnits } from "@/lib/money"
 import { useMe } from "@/lib/useMe"
 
@@ -16,6 +21,7 @@ const EMPTY = { advertiser: "", text: "", url: "", bid: "", budget: "" }
 
 export default function AdvertisePage() {
   const { me, isLoggedIn } = useMe()
+  const { primaryWallet } = useDynamicContext()
   const authed = isLoggedIn || me !== null
 
   const [form, setForm] = useState(EMPTY)
@@ -27,6 +33,12 @@ export default function AdvertisePage() {
   const [listError, setListError] = useState<string | null>(null)
   const [fundingId, setFundingId] = useState<string | null>(null)
 
+  // Treasury (where + how to pay) is authoritative for token + decimals — never
+  // hardcode them. Until loaded, fall back to 6dp (mock/dev); the real backend
+  // returns 18 for the arc-testnet pool token.
+  const [treasury, setTreasury] = useState<Treasury | null>(null)
+  const decimals = treasury?.decimals ?? 6
+
   const loadCampaigns = useCallback(async () => {
     try {
       setListError(null)
@@ -34,6 +46,12 @@ export default function AdvertisePage() {
     } catch (e) {
       setListError(e instanceof Error ? e.message : String(e))
     }
+  }, [])
+
+  useEffect(() => {
+    getTreasury()
+      .then(setTreasury)
+      .catch(() => setTreasury(null))
   }, [])
 
   useEffect(() => {
@@ -53,13 +71,14 @@ export default function AdvertisePage() {
     let budgetBaseUnits: string
     try {
       // money.ts throws on malformed / over-precise amounts — fail before we POST.
-      bidBaseUnits = toBaseUnits(form.bid).toString()
-      budgetBaseUnits = toBaseUnits(form.budget).toString()
+      // Use the token's decimals so ledger amounts match the on-chain transfer.
+      bidBaseUnits = toBaseUnits(form.bid, decimals).toString()
+      budgetBaseUnits = toBaseUnits(form.budget, decimals).toString()
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err))
       return
     }
-    if (toBaseUnits(form.budget) <= 0n) {
+    if (toBaseUnits(form.budget, decimals) <= 0n) {
       setFormError("Budget must be greater than 0.")
       return
     }
@@ -83,12 +102,55 @@ export default function AdvertisePage() {
     }
   }
 
-  async function handleFund(id: string) {
-    setFundingId(id)
+  async function handleFund(c: Campaign) {
+    setFundingId(c.id)
     setNotice(null)
+    setListError(null)
     try {
-      await fundCampaign(id)
-      setNotice(`Campaign ${id} funded — the on-chain private deposit is in flight.`)
+      if (!treasury) throw new Error("Payment configuration unavailable — is the backend reachable?")
+      if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+        throw new Error("Connect an EVM (Dynamic) wallet to pay the campaign budget on-chain.")
+      }
+      const amount = BigInt(c.budgetBaseUnits ?? "0")
+      if (amount <= 0n) throw new Error("This campaign has no budget to fund.")
+
+      const token = treasury.token as `0x${string}`
+      const to = treasury.address as `0x${string}`
+      const walletClient = await primaryWallet.getWalletClient(String(treasury.chainId))
+      const sender = walletClient.account.address
+      const publicClient = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC_URL) })
+
+      // Pre-checks: enough token balance + some native gas (Arc gas = native USDC).
+      const [bal, gas] = await Promise.all([
+        publicClient.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [sender] }),
+        publicClient.getBalance({ address: sender }),
+      ])
+      if (bal < amount) {
+        throw new Error(
+          `Insufficient balance: need ${fromBaseUnits(amount, decimals)} but the wallet holds ${fromBaseUnits(bal, decimals)}.`,
+        )
+      }
+      if (gas === 0n) throw new Error("Wallet has no native gas on Arc. Top up from faucet.circle.com.")
+
+      // 1) Public transfer of the budget to the treasury EOA (advertiser signs).
+      setNotice("Confirm the USDC transfer to the treasury in your wallet…")
+      const hash = await walletClient.writeContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [to, amount],
+      })
+      setNotice("Payment sent — waiting for on-chain confirmation…")
+      await publicClient.waitForTransactionReceipt({ hash })
+
+      // 2) Backend verifies that transfer, then privately deposits the budget into the pool.
+      setNotice("Confirmed — shielding the budget into the private pool…")
+      await fundCampaign(c.id, hash)
+
+      setNotice(
+        "Funded. Your transfer to the treasury is public on-chain; the deposit into the private pool — " +
+          "and which developers your budget ends up paying — stays hidden via Unlink.",
+      )
       await loadCampaigns()
     } catch (err) {
       setListError(err instanceof Error ? err.message : String(err))
@@ -207,8 +269,9 @@ export default function AdvertisePage() {
               <CampaignRow
                 key={c.id}
                 campaign={c}
+                decimals={decimals}
                 funding={fundingId === c.id}
-                onFund={() => handleFund(c.id)}
+                onFund={() => handleFund(c)}
               />
             ))}
           </div>
@@ -220,10 +283,12 @@ export default function AdvertisePage() {
 
 function CampaignRow({
   campaign,
+  decimals,
   funding,
   onFund,
 }: {
   campaign: Campaign
+  decimals: number
   funding: boolean
   onFund: () => void
 }) {
@@ -247,23 +312,25 @@ function CampaignRow({
             {campaign.url}
           </a>
         </div>
-        <button className="btn btn-sm" onClick={onFund} disabled={funding}>
-          {funding ? "Funding…" : fundable ? "Fund" : "Re-fund"}
+        {/* Disabled once funded — a campaign funds once; re-paying an active one
+            would transfer again while the backend treats it as already funded. */}
+        <button className="btn btn-sm" onClick={onFund} disabled={funding || !fundable}>
+          {funding ? "Funding…" : fundable ? "Fund" : "Funded"}
         </button>
       </div>
 
       <div className="inline" style={{ marginTop: 12, gap: 24 }}>
         <span className="muted" style={{ fontSize: 13 }}>
-          Bid: <span className="mono">{fromBaseUnits(BigInt(campaign.bidBaseUnits))} USDC</span> / 1k
+          Bid: <span className="mono">{fromBaseUnits(BigInt(campaign.bidBaseUnits), decimals)} USDC</span> / 1k
         </span>
         {remaining !== undefined ? (
           <span className="muted" style={{ fontSize: 13 }}>
-            Remaining: <span className="mono">{fromBaseUnits(BigInt(remaining))} USDC</span>
+            Remaining: <span className="mono">{fromBaseUnits(BigInt(remaining), decimals)} USDC</span>
           </span>
         ) : null}
         {spent !== undefined ? (
           <span className="muted" style={{ fontSize: 13 }}>
-            Spent: <span className="mono">{fromBaseUnits(BigInt(spent))} USDC</span>
+            Spent: <span className="mono">{fromBaseUnits(BigInt(spent), decimals)} USDC</span>
           </span>
         ) : null}
       </div>

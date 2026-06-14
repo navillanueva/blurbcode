@@ -46,6 +46,8 @@ export const campaigns = pgTable(
     budgetRemainingBaseUnits: numeric("budget_remaining_base_units").notNull().default("0"),
     /** 'draft' (created, not funded) | 'active' (served) | 'exhausted' (budget 0). */
     status: text("status").notNull().default("draft"),
+    /** Advertiser's on-chain payment tx (real mode). Unique → guards against reuse. */
+    paymentTxHash: text("payment_tx_hash"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("campaigns_status_idx").on(t.status)],

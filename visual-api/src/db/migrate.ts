@@ -1,8 +1,10 @@
-// Schema migration runner. Reads the canonical SQL in drizzle/0000_init.sql and
-// applies it statement-by-statement so it works on any driver (Postgres + PGlite)
-// without depending on a driver-specific migrator. The DDL is idempotent
-// (CREATE ... IF NOT EXISTS), so applying it repeatedly is safe.
+// Schema migration runner. Applies every drizzle/*.sql file in lexical order
+// (0000_init, 0001_…, …), statement-by-statement, so it works on any driver
+// (Postgres + PGlite) without a driver-specific migrator. All DDL is idempotent
+// (CREATE/ALTER ... IF NOT EXISTS), so applying it repeatedly — and re-running
+// already-applied files — is safe.
 
+import { readdir } from "node:fs/promises"
 import { sql } from "drizzle-orm"
 import type { Database } from "./index"
 
@@ -14,11 +16,14 @@ export function splitStatements(sqlText: string): string[] {
     .filter((s) => s.length > 0)
 }
 
-/** Apply the initial schema to a database. Idempotent. */
+/** Apply all schema migrations (drizzle/*.sql) in order. Idempotent. */
 export async function applySchema(db: Database): Promise<void> {
-  const url = new URL("../../drizzle/0000_init.sql", import.meta.url)
-  const text = await Bun.file(url).text()
-  for (const stmt of splitStatements(text)) {
-    await db.execute(sql.raw(stmt))
+  const dir = new URL("../../drizzle/", import.meta.url)
+  const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort()
+  for (const file of files) {
+    const text = await Bun.file(new URL(file, dir)).text()
+    for (const stmt of splitStatements(text)) {
+      await db.execute(sql.raw(stmt))
+    }
   }
 }

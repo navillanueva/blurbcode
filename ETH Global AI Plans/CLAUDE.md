@@ -10,6 +10,27 @@ Wallets are **Dynamic**. Full context: `kickback-ai-build-plan.md` + `sdk-and-en
 `docs.unlink.xyz/partner-integrations` is our exact stack (Dynamic + Unlink + Circle Gateway x402 +
 Arc). Follow its patterns. Packages: `@unlink-xyz/sdk@canary`, `@circle-fin/x402-batching`.
 
+## STATUS — v0.4 private custodial settlement: SHIPPED (2026-06-13)
+
+The private money loop is **implemented and live-proven on Arc testnet**, per
+`plans/plan-4-private-custodial-settlement.md`. Real private Unlink **deposit** at fund (after
+verifying the advertiser's public USDC transfer to the treasury EOA) + **withdraw** at payout; the
+Postgres ledger does the 50/50 split off-chain (no per-impression on-chain). One gated live smoke
+confirmed the round-trip — deposit 0.10 → withdraw 0.05, both `processed`, pool ends 0.05 shielded
+(deposit `0x8f46fedc…f59000`, withdraw `0x50db3435…5e2a`).
+
+- **Backend (`visual-api`):** `RealUnlinkPrivacy.deposit()` via an `evm.fromViem` treasury signer;
+  pure `verify-payment.ts` (ERC-20 Transfer receipt check); fund route takes `{ paymentTxHash }` with
+  idempotency + reuse guard; withdraw hardened (pool-balance guard, wait-for-terminal, Unlink-only);
+  `GET /api/treasury`; `/health` pool-vs-liabilities reconciliation; `ARC_USDC_DECIMALS` (18 for the
+  ULNKMock pool token `0x4F59…b300`) threaded through the money layer; migration `0001_fund_payment.sql`.
+- **Frontend (`visual-web`):** advertiser pays the budget on-chain from the Dynamic wallet → waits for
+  the receipt → `fund(txHash)`; token + decimals read from `GET /api/treasury` (never hardcoded).
+- **Verified:** typecheck clean · 51 tests · `next build` · real-files typecheck · the one live smoke.
+- **Remaining (deploy-only, manual):** browser E2E with the Dynamic wallet; vendor the `@unlink-xyz/sdk`
+  tarball for Railway (Plan §2 P0b — local resolves only via a symlink); set Railway `visual-api` →
+  `SETTLEMENT_MODE=real` (+ `ARC_USDC_DECIMALS=18`, pool token).
+
 ## GOLDEN RULES
 
 1. **NEVER fabricate** chain IDs, RPC URLs, contract addresses, API keys, package names, or SDK
@@ -129,3 +150,29 @@ on-chain.*
     account paying developers directly, no platform pool). Heavier — per-advertiser keys + gas — but
     removes platform trust. Different architecture than v0.4's custodial pool; revisit only if custody
     becomes a concern.
+
+## FUTURE DEVELOPMENT — distribution / one-line install (post-MVP)
+
+*Captured 2026-06-13. Ship the TUI the way opencode does (`curl … | bash`) once the rebrand + domain
+land. NOT MVP scope. Ties into the rebrand: the install script's `APP` name, repo, and hosted
+`<domain>/install` URL all change with the new name.*
+
+Vanilla opencode installs with NO fork: the root `install` script downloads a prebuilt per-OS/arch
+binary from GitHub Releases (`anomalyco/opencode`); `packages/opencode/script/build.ts` compiles them
+(`Bun.build({ compile })`, 12 targets) and `script/publish.ts` also publishes per-platform npm
+packages. To give Visual Code the same one-liner:
+
+- **Easy parts:** cut a GitHub Release with the binaries (`gh release create`; `build.ts` already
+  uploads on release); ship a renamed `install` script — change `anomalyco/opencode` → the new repo
+  and `APP=opencode` → the new name; host it at `<domain>/install`.
+- **Hard part (needs CI):** cross-platform *native* binaries. The TUI has native modules
+  (`tree-sitter-*`, `@parcel/watcher`, `@opentui/core`, `@ff-labs/fff-bun`) that can't be cross-built
+  from one machine — `build.ts` relies on `bun install --os="*" --cpu="*"` prebuilts and a CI matrix
+  (real linux/win/mac runners) to compile + smoke-test each target. `--single` builds only the current
+  OS (fine for dev / a Mac-only demo). This is the only genuinely hard piece.
+- **Annoying part (skip for now):** npm/brew. The npm artifact isn't source — it's a shim
+  (`packages/opencode/bin/opencode`) + ~12 per-platform binary packages, all under a scope you own.
+  Replicating means rebranding the `@opencode-ai/*` scope to `@<new>/*` and publishing in lockstep
+  (`publish.ts`). Brew = maintaining a tap formula.
+- **Pragmatic path:** GitHub Release (mac + linux) + hosted renamed install script = a real
+  `curl … | bash` for the platforms that matter, no npm. Add Windows + npm + brew later via CI.

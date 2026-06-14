@@ -8,18 +8,31 @@
 
 const BASE_URL = (process.env.NEXT_PUBLIC_VISUALCODE_API_URL ?? "http://localhost:8787").replace(/\/$/, "")
 
-/** All money fields are USDC base units (6 dp) encoded as decimal strings. */
+/** All money fields are token base units encoded as decimal strings (see Treasury.decimals). */
 export interface Campaign {
   id: string
   advertiser: string
   text: string
   url: string
   bidBaseUnits: string
+  /** Original funded budget (what must be paid to fund). */
+  budgetBaseUnits?: string
   budgetRemainingBaseUnits?: string
   /** Total spent so far, if the backend reports it. */
   spentBaseUnits?: string
   status?: string
   createdAt?: string
+}
+
+/** Where + how to pay the campaign budget on-chain (GET /api/treasury). */
+export interface Treasury {
+  /** EOA the advertiser sends the public USDC transfer to. */
+  address: string
+  /** ERC-20 token to send. */
+  token: string
+  chainId: number
+  /** Decimals of `token` — drives every human↔base conversion + parseUnits. */
+  decimals: number
 }
 
 export interface Me {
@@ -152,10 +165,20 @@ export function createCampaign(input: CreateCampaignInput): Promise<{ campaign: 
   })
 }
 
-/** Trigger the on-chain private deposit (Unlink on Arc) that funds the campaign. */
-export function fundCampaign(id: string): Promise<{ campaign: Campaign }> {
-  return request<{ campaign: Campaign }>(`/api/campaigns/${encodeURIComponent(id)}/fund`, {
+/** Where + how to pay the campaign budget on-chain. */
+export function getTreasury(): Promise<Treasury> {
+  return request<Treasury>("/api/treasury")
+}
+
+/**
+ * Activate a campaign after paying its budget on-chain. `paymentTxHash` is the
+ * advertiser's public USDC transfer to the treasury; the backend verifies it, then
+ * does the private Unlink deposit into the pool.
+ */
+export function fundCampaign(id: string, paymentTxHash: string): Promise<{ campaign: Campaign; txRef: string | null }> {
+  return request<{ campaign: Campaign; txRef: string | null }>(`/api/campaigns/${encodeURIComponent(id)}/fund`, {
     method: "POST",
+    body: JSON.stringify({ paymentTxHash }),
   })
 }
 

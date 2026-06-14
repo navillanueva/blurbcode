@@ -24,10 +24,21 @@ export interface SettlementService {
     campaignId: string
     amountBaseUnits: BaseUnits
     advertiserAddress: string
+    /**
+     * Hash of the advertiser's public USDC payment to the treasury. Required in
+     * real mode (verified before the private deposit); ignored in mock.
+     */
+    paymentTxHash?: string
   }): Promise<SettlementResult>
   withdrawEarnings(p: {
     accountId: string
     amountBaseUnits: BaseUnits
     recipientEvmAddress: string
   }): Promise<SettlementResult>
+  /**
+   * Live shielded-pool balance for `/health` reconciliation, or `null` when there
+   * is no on-chain pool (mock) or it can't be read. Implementations should cache
+   * the live call so `/health` stays cheap.
+   */
+  getPoolBalance?(): Promise<BaseUnits | null>
 }

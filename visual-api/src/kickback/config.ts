@@ -58,6 +58,14 @@ export interface KickbackConfig {
   payer?: PayerConfig
   dynamic: DynamicConfig
   unlink: UnlinkConfig
+  /**
+   * EOA advertisers pay their public USDC budget into. Defaults to the payer EOA
+   * (treasury and Gateway payer are the same account) when `TREASURY_ADDRESS` is
+   * unset. The backend verifies that public transfer, then shields the budget.
+   */
+  treasuryAddress?: Hex
+  /** Confirmations required on the advertiser payment tx before funding (default 1). */
+  fundMinConfirmations: number
 }
 
 type Env = Record<string, string | undefined>
@@ -75,12 +83,18 @@ export function readKickbackEnv(env: Env = process.env): KickbackConfig {
   const usdcAddress = clean(env.ARC_USDC_ADDRESS)
   const chainId = chainIdRaw !== undefined ? Number(chainIdRaw) : NaN
 
+  // USDC = 6dp on mainnet, but the arc-testnet pool token (ULNKMock) is 18dp.
+  // Configurable so the same code is correct on both; defaults to USDC_DECIMALS.
+  const decimalsRaw = clean(env.ARC_USDC_DECIMALS)
+  const parsedDecimals = decimalsRaw !== undefined ? Number(decimalsRaw) : USDC_DECIMALS
+  const usdcDecimals = Number.isInteger(parsedDecimals) && parsedDecimals >= 0 ? parsedDecimals : USDC_DECIMALS
+
   let arc: ArcConfig | undefined
   if (rpcUrl && usdcAddress && ADDRESS_RE.test(usdcAddress) && Number.isInteger(chainId) && chainId > 0) {
     arc = {
       rpcUrl,
       chainId,
-      usdc: { symbol: "USDC", address: usdcAddress, decimals: USDC_DECIMALS },
+      usdc: { symbol: "USDC", address: usdcAddress, decimals: usdcDecimals },
     }
   }
 
@@ -104,5 +118,14 @@ export function readKickbackEnv(env: Env = process.env): KickbackConfig {
     mnemonic: clean(env.UNLINK_MNEMONIC),
   }
 
-  return { arc, payer, dynamic, unlink }
+  // Treasury defaults to the payer EOA (same account receives + redeposits).
+  const treasuryRaw = clean(env.TREASURY_ADDRESS)
+  const treasuryAddress: Hex | undefined =
+    treasuryRaw && ADDRESS_RE.test(treasuryRaw) ? (treasuryRaw as Hex) : payer?.address
+
+  const confirmationsRaw = clean(env.FUND_MIN_CONFIRMATIONS)
+  const parsedConfirmations = confirmationsRaw !== undefined ? Number(confirmationsRaw) : 1
+  const fundMinConfirmations = Number.isInteger(parsedConfirmations) && parsedConfirmations > 0 ? parsedConfirmations : 1
+
+  return { arc, payer, dynamic, unlink, treasuryAddress, fundMinConfirmations }
 }
