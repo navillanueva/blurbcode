@@ -94,6 +94,10 @@ see the FRONTEND section. The `/me` TUI tab IS now in scope as task 5 (feasibili
 
 ## FRONTEND — DEFERRED TO TOMORROW (manual; NOT in the overnight loop)
 
+> **SUPERSEDED (see STATUS):** the web frontend shipped as **Next.js `visual-web`** (`/advertise` +
+> `/wallet`), not the SolidStart `packages/marketplace` planned below. `/advertise` is live with the
+> v0.4 on-chain pay flow. The notes below are the original plan, kept for history.
+
 Scoped 2026-06-13. Build by hand tomorrow — the loop must not scaffold or deploy any of this.
 - **Stack: SolidStart** (new `packages/marketplace`, cloning the `packages/console/app` pattern).
   NOT Next.js — the whole repo is SolidJS/SolidStart, so the `/me` web page can share Solid
