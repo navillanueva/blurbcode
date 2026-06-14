@@ -7,11 +7,12 @@ import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core"
 import { Logo } from "@/components/BlurbMark"
 import { MenuIcon } from "@/components/Icons"
 
-// v2 nav (handoff §1): only Advertise + Earnings. Home is the logo; Wallet is the
-// sign-in/onboarding destination (not a tab); Brand + Terminal were removed.
+// v2 nav (handoff §1): only Advertise + Personal account. Home is the logo; the
+// personal-account page (/me) is also the sign-in/onboarding destination, holding
+// the device token, wallet, and earnings. Brand + Terminal were removed.
 const NAV = [
   { href: "/advertise", label: "Advertise" },
-  { href: "/me", label: "Earnings" },
+  { href: "/me", label: "Personal account" },
 ] as const
 
 export function Header() {
@@ -56,7 +57,7 @@ export function Header() {
         <div className="header-right">
           {isLoggedIn ? (
             <>
-              <Link href="/wallet" className="btn btn--ink btn--sign mono" title={address ?? undefined}>
+              <Link href="/me" className="btn btn--ink btn--sign mono" title={address ?? undefined}>
                 {shortAddr}
               </Link>
               <button className="btn btn--ghost btn--sign" onClick={() => handleLogOut()}>

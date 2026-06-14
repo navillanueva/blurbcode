@@ -50,7 +50,7 @@ export default function Landing() {
           <em style={{ fontStyle: "normal", color: "var(--g-1000)", fontWeight: 600 }}>half</em> of every impression.
         </p>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/wallet" className="btn btn--ink btn--lg">
+          <Link href="/me" className="btn btn--ink btn--lg">
             Start earning <ArrowRight />
           </Link>
           <Link href="/advertise" className="btn btn--outline btn--lg">

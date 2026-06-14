@@ -23,7 +23,7 @@ import { toBaseUnits, USDC_DECIMALS } from "@kickback/money"
 import { encryptSecret } from "./auth/crypto"
 import { SESSION_COOKIE, signSession, verifySession } from "./auth/session"
 import type { DynamicVerifier } from "./auth/dynamic"
-import type { WorldIdVerifier } from "./auth/world-id"
+import { type WorldIdVerifier, WorldIdVerifyError } from "./auth/world-id"
 import type { SettlementService } from "./settlement/service"
 
 export interface AppDeps {
@@ -392,9 +392,12 @@ export function createApp(deps: AppDeps) {
     let nullifierHash: string
     try {
       ;({ nullifierHash } = await verifier.verify(payload))
-    } catch {
-      // Never surface the verifier's message (it can reference proof material).
-      return c.json({ ok: false, error: "verification_failed" }, 400)
+    } catch (e) {
+      // World's error CODE is safe to surface (e.g. max_verifications_reached,
+      // invalid_proof) — it explains the failure without exposing proof material.
+      const worldCode = e instanceof WorldIdVerifyError ? e.code : undefined
+      console.error("verify-human failed:", worldCode ?? "unknown", e instanceof WorldIdVerifyError ? `HTTP ${e.status}` : "")
+      return c.json({ ok: false, error: "verification_failed", worldCode }, 400)
     }
     const result = await repo.bindWorldId(deps.db, c.get("accountId"), nullifierHash)
     if (result === "conflict") return c.json({ ok: false, error: "already_linked" }, 409)

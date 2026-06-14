@@ -34,6 +34,23 @@ export interface WorldIdVerifierOptions {
 
 const DEFAULT_VERIFY_BASE = "https://developer.worldcoin.org"
 
+/**
+ * Carries the World cloud-verify failure REASON — its `code`/`detail` (e.g.
+ * "max_verifications_reached", "invalid_proof", "invalid_merkle_root") — which are
+ * safe diagnostic fields, never proof material. Lets callers log/surface *why* a
+ * proof was rejected instead of a bare HTTP status.
+ */
+export class WorldIdVerifyError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code?: string,
+    readonly detail?: string,
+  ) {
+    super(`World ID verification failed (HTTP ${status}${code ? `: ${code}` : ""})`)
+    this.name = "WorldIdVerifyError"
+  }
+}
+
 function asString(v: unknown): string | undefined {
   return typeof v === "string" && v.length > 0 ? v : undefined
 }
@@ -68,9 +85,20 @@ export function createWorldIdVerifier(opts: WorldIdVerifierOptions): WorldIdVeri
           action: asString(p["action"]) ?? opts.action,
         }),
       })
-      // Surface the status only — never echo the proof or the response body, which
-      // can contain proof material.
-      if (res.status !== 200) throw new Error(`World ID verification failed (HTTP ${res.status})`)
+      // On failure extract ONLY World's safe error fields (code/detail) — never the
+      // proof or the full body. These say *why* (e.g. max_verifications_reached).
+      if (res.status !== 200) {
+        let code: string | undefined
+        let detail: string | undefined
+        try {
+          const body = (await res.json()) as Record<string, unknown>
+          code = asString(body["code"])
+          detail = asString(body["detail"])
+        } catch {
+          /* non-JSON error body — leave code/detail undefined */
+        }
+        throw new WorldIdVerifyError(res.status, code, detail)
+      }
       return { nullifierHash }
     },
   }

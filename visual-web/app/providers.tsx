@@ -34,16 +34,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
               await authDynamic(jwt)
             } catch (e) {
               // Best-effort link: the wallet exists regardless. Log loudly; the
-              // /wallet page surfaces backend reachability via GET /api/me.
+              // personal-account page surfaces backend reachability via GET /api/me.
               console.error("POST /api/auth/dynamic failed (account not linked):", e)
             }
-            // After a general sign-in, take the user to their wallet page (device
-            // token + earnings). Skip when they're already on an authed page so the
-            // advertise / earnings flows aren't yanked away mid-task.
+            // After a general sign-in, take the user to their personal-account page
+            // (device token + wallet + earnings). Skip when they're already on an
+            // authed page so the advertise / account flows aren't yanked away mid-task.
             if (typeof window !== "undefined") {
               const path = window.location.pathname
-              if (path !== "/wallet" && path !== "/advertise" && path !== "/me") {
-                window.location.assign("/wallet")
+              if (path !== "/advertise" && path !== "/me") {
+                window.location.assign("/me")
               }
             }
           },
