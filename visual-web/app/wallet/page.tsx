@@ -1,15 +1,24 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
 import { createDeviceToken } from "@/lib/api"
+import { fromBaseUnits } from "@/lib/money"
 import { useMe } from "@/lib/useMe"
 import { BlurbMark } from "@/components/BlurbMark"
-import { ArrowRight, Check, Coin, Copy, Lock } from "@/components/Icons"
+import { ArrowRight, Check, Coin, Copy, Lock, WarningTriangle } from "@/components/Icons"
 
-// Sample token shown if the backend can't issue a real one (TODO(human): real data).
-const SAMPLE_TOKEN = "bc_dev_7Qx9R2mK4tLpZ8vN1wEs"
+// Format a balance (token base-unit string) as a "$0.00" USD figure. Unknown or
+// not-yet-loaded balances read as "$0.00" — never a fake placeholder.
+function formatUsd(baseUnits: string | undefined): string {
+  if (!baseUnits) return "$0.00"
+  try {
+    return `$${Number(fromBaseUnits(BigInt(baseUnits))).toFixed(2)}`
+  } catch {
+    return "$0.00"
+  }
+}
 
 const METHODS = [
   { id: "email", label: "Email" },
@@ -29,7 +38,7 @@ export default function WalletPage() {
   const connected = isLoggedIn || me !== null
 
   const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>("email")
-  const [email, setEmail] = useState("nicolas@avalabs.org")
+  const [email, setEmail] = useState("")
 
   return (
     <main className="shell shell--980" style={{ padding: "56px 28px 100px" }}>
@@ -48,7 +57,7 @@ export default function WalletPage() {
       </div>
 
       {connected ? (
-        <ConnectedState address={me?.address ?? primaryWallet?.address ?? null} />
+        <ConnectedState address={me?.address ?? primaryWallet?.address ?? null} balanceBaseUnits={me?.balanceBaseUnits} />
       ) : (
         <div className="grid-collapse" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
           {/* sign-in method */}
@@ -100,30 +109,38 @@ export default function WalletPage() {
   )
 }
 
-function ConnectedState({ address }: { address: string | null }) {
+function ConnectedState({ address, balanceBaseUnits }: { address: string | null; balanceBaseUnits?: string }) {
   const [token, setToken] = useState<string | null>(null)
+  const [tokenError, setTokenError] = useState(false)
   const [reveal, setReveal] = useState(false)
   const [copied, setCopied] = useState(false)
   const requested = useRef(false)
 
-  // Issue one real device token on entering the connected state; fall back to the
-  // sample if the backend is unreachable so the panel still demonstrates the flow.
+  // Issue one real device token on entering the connected state. If issuance
+  // fails we surface an explicit error + retry — never a fake token, which the
+  // TUI's bearer auth would silently reject after the dev pastes it.
+  const issueToken = useCallback(() => {
+    setTokenError(false)
+    setToken(null)
+    createDeviceToken()
+      .then((res) => setToken(res.token))
+      .catch(() => setTokenError(true))
+  }, [])
+
   useEffect(() => {
     if (requested.current) return
     requested.current = true
-    createDeviceToken()
-      .then((res) => setToken(res.token))
-      .catch(() => setToken(SAMPLE_TOKEN))
-  }, [])
+    issueToken()
+  }, [issueToken])
 
-  const tok = token ?? SAMPLE_TOKEN
-  const masked = tok.slice(0, 7) + "•".repeat(21)
-  const loginShort = tok.length > 16 ? `${tok.slice(0, 11)}…${tok.slice(-4)}` : tok
-  const shortAddr = address ? `${address.slice(0, 6)} ···· ${address.slice(-4)}` : "0x9c87 ···· 78d4"
+  const masked = token ? token.slice(0, 7) + "•".repeat(21) : ""
+  const loginShort = token ? (token.length > 16 ? `${token.slice(0, 11)}…${token.slice(-4)}` : token) : ""
+  const shortAddr = address ? `${address.slice(0, 6)} ···· ${address.slice(-4)}` : "—"
 
   async function copy() {
+    if (!token) return
     try {
-      await navigator.clipboard.writeText(tok)
+      await navigator.clipboard.writeText(token)
       setCopied(true)
       setTimeout(() => setCopied(false), 1400)
     } catch {
@@ -163,7 +180,7 @@ function ConnectedState({ address }: { address: string | null }) {
             <div>
               <div style={{ fontSize: 11, color: "rgba(253,253,253,0.6)" }}>balance</div>
               <div className="mono" style={{ fontSize: 20, marginTop: 2 }}>
-                $•••••
+                {formatUsd(balanceBaseUnits)}
               </div>
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 22, padding: "0 9px", borderRadius: 8, background: "rgba(155,224,85,0.16)", color: "var(--earn)", fontSize: 11, fontWeight: 500 }}>
@@ -187,22 +204,38 @@ function ConnectedState({ address }: { address: string | null }) {
           Paste this into your terminal once. It authorizes this machine to earn — and nothing else.
         </p>
 
-        <div style={{ background: "var(--g-200)", border: "1px solid var(--g-400)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <span className="mono" style={{ fontSize: 14, color: "var(--g-1000)", flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
-            {reveal ? tok : masked}
-          </span>
-          <button className="linkbtn" onClick={() => setReveal((v) => !v)}>
-            {reveal ? "Hide" : "Reveal"}
-          </button>
-          <button className="btn btn--ink btn--copy" onClick={copy}>
-            <Copy size={14} />
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
+        {tokenError ? (
+          <div className="banner banner--error" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <span style={{ display: "inline-flex", flexShrink: 0 }}>
+              <WarningTriangle size={16} />
+            </span>
+            <span style={{ flex: 1 }}>Couldn't issue a device token — retry.</span>
+            <button className="btn btn--ink btn--copy" onClick={issueToken}>
+              Retry
+            </button>
+          </div>
+        ) : !token ? (
+          <div className="banner" style={{ marginBottom: 20 }}>Issuing a device token…</div>
+        ) : (
+          <>
+            <div style={{ background: "var(--g-200)", border: "1px solid var(--g-400)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <span className="mono" style={{ fontSize: 14, color: "var(--g-1000)", flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                {reveal ? token : masked}
+              </span>
+              <button className="linkbtn" onClick={() => setReveal((v) => !v)}>
+                {reveal ? "Hide" : "Reveal"}
+              </button>
+              <button className="btn btn--ink btn--copy" onClick={copy}>
+                <Copy size={14} />
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
 
-        <div className="mono" style={{ background: "var(--term-body)", border: "1px solid var(--term-border)", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "var(--g-650)", marginBottom: 20 }}>
-          <span style={{ color: "var(--indigo)" }}>$</span> blurb login --token <span className="term-check">{loginShort}</span>
-        </div>
+            <div className="mono" style={{ background: "var(--term-body)", border: "1px solid var(--term-border)", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "var(--g-650)", marginBottom: 20 }}>
+              <span style={{ color: "var(--indigo)" }}>$</span> blurb login --token <span className="term-check">{loginShort}</span>
+            </div>
+          </>
+        )}
 
         <Link href="/me" className="btn btn--outline btn--block">
           Go to my earnings <ArrowRight size={17} />
