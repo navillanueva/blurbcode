@@ -7,14 +7,11 @@ import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
 import { Logo } from "@/components/BlurbMark"
 import { MenuIcon } from "@/components/Icons"
 
-// Nav maps the prototype's in-page switcher onto real routes.
+// v2 nav (handoff §1): only Advertise + Earnings. Home is the logo; Wallet is the
+// sign-in/onboarding destination (not a tab); Brand + Terminal were removed.
 const NAV = [
-  { href: "/", label: "Landing" },
-  { href: "/brand", label: "Brand" },
   { href: "/advertise", label: "Advertise" },
-  { href: "/wallet", label: "Wallet" },
   { href: "/me", label: "Earnings" },
-  { href: "/terminal", label: "Terminal" },
 ] as const
 
 export function Header() {
@@ -36,7 +33,7 @@ export function Header() {
 
         <nav className="main-nav" data-open={open}>
           {NAV.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+            const active = pathname.startsWith(item.href)
             return (
               <Link
                 key={item.href}
@@ -51,10 +48,6 @@ export function Header() {
         </nav>
 
         <div className="header-right">
-          <span className="pill pill--arc">
-            <span className="dot-green" />
-            Arc · private
-          </span>
           <button className="btn btn--ink btn--sign" onClick={() => setShowAuthFlow(true)}>
             Sign in
           </button>

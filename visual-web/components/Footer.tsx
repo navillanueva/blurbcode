@@ -7,7 +7,7 @@ export function Footer() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Logo markSize={24} wordSize={15} />
+          <Logo wordSize={15} cursorW={8} cursorH={15} blink={false} />
           <span className="mono" style={{ fontSize: 12, color: "var(--g-600)", marginLeft: 6 }}>
             blurbcode.xyz
           </span>

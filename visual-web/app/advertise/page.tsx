@@ -179,8 +179,8 @@ export default function AdvertisePage() {
           Put your ad in developers&apos; terminals.
         </h1>
         <p style={{ fontSize: 15, lineHeight: 1.55, color: "var(--g-700)", margin: 0, maxWidth: 620 }}>
-          Create one ad, fund it on-chain, and it serves in the status line of developers running BlurbCode.
-          The developer whose terminal renders it earns half — settled privately via Unlink.
+          Create one ad, fund it on-chain, and it serves in developers&apos; terminals — they earn half, settled
+          privately via Unlink.
         </p>
       </div>
 

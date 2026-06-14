@@ -1,28 +1,28 @@
 import Link from "next/link"
-import { Terminal, TermStep, StatusLine } from "@/components/Terminal"
 import { Footer } from "@/components/Footer"
+import { Spinner } from "@/components/Spinner"
 import { ArrowRight, ArrowDownRight, Check, Coin, Lock, Shield } from "@/components/Icons"
 
-// Advertiser names (Linear/etc.) are PLACEHOLDERS — sample copy only.
+// Advertiser names (Linear/Dynamic/etc.) are PLACEHOLDERS — sample copy only.
 // TODO(human): real launch partners.
 
 const STEPS = [
   {
     n: "01",
-    title: "Advertiser funds a campaign",
-    body: "They write one short blurb, set a click-through URL, and bid per thousand impressions. An ascending auction ranks the queue.",
+    title: "Advertiser buys an ad",
+    body: "One blurb, one bid per 1k impressions. An auction ranks the queue.",
     icon: <Coin />,
   },
   {
     n: "02",
     title: "Developer earns while coding",
-    body: "BlurbCode shows the winning blurb in the status line as the agent works. Each impression credits the developer 50% — live, in real time.",
+    body: "The winning blurb shows in the status line. Each view credits you 50%, live.",
     icon: <ArrowDownRight />,
   },
   {
     n: "03",
     title: "Private payout on Arc",
-    body: "Earnings settle as gas-free USDC micropayments on Arc. Balances and counterparties stay private. Withdraw at $10.",
+    body: "Gas-free USDC, balances private. Withdraw at $10.",
     icon: <Lock />,
   },
 ]
@@ -33,68 +33,84 @@ const ADV_POINTS = ["Transparent CPM auction, bid from $1", "Live delivery & spe
 export default function Landing() {
   return (
     <main>
-      {/* hero */}
-      <section
-        className="shell grid-collapse"
-        style={{ padding: "84px 28px 64px", display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 56, alignItems: "center" }}
-      >
-        <div>
-          <div className="oss-pill" style={{ marginBottom: 26 }}>
-            <span className="oss-badge">OSS</span>
-            Open-source coding agent · forked from OpenCode
-          </div>
-          <h1 className="display" style={{ fontSize: 53, lineHeight: 1.04, letterSpacing: "-0.03em", margin: "0 0 22px" }}>
-            Your terminal agent,
-            <br />
-            now an <span style={{ color: "var(--indigo-dark)" }}>income stream.</span>
-          </h1>
-          <p style={{ fontSize: 19, lineHeight: 1.55, color: "var(--g-700)", margin: "0 0 34px", maxWidth: 498 }}>
-            BlurbCode codes alongside you in the terminal. While the agent works, it shows{" "}
-            <em style={{ fontStyle: "normal", color: "var(--g-1000)", fontWeight: 500 }}>one</em> tasteful sponsored blurb in
-            the status line — and you keep half of every impression. Paid out privately in USDC on Arc.
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <Link href="/wallet" className="btn btn--ink btn--lg">
-              Start earning <ArrowRight />
-            </Link>
-            <Link href="/advertise" className="btn btn--outline btn--lg">
-              Advertise with us
-            </Link>
-          </div>
-          <div className="mono" style={{ display: "flex", alignItems: "center", gap: 22, marginTop: 34, fontSize: 13, color: "var(--g-650)", flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <span style={{ color: "var(--gold-dark)", display: "inline-flex" }}>
-                <Shield />
-              </span>
-              50/50 split
+      {/* hero — centered single column */}
+      <section style={{ maxWidth: 880, margin: "0 auto", padding: "80px 28px 36px", textAlign: "center" }}>
+        <div className="oss-pill" style={{ marginBottom: 26 }}>
+          <span className="oss-badge">OSS</span>
+          Open-source coding agent
+        </div>
+        <h1 className="display" style={{ fontSize: 53, lineHeight: 1.04, letterSpacing: "-0.03em", margin: "0 0 22px" }}>
+          Your terminal agent,
+          <br />
+          now an <span style={{ color: "var(--indigo-dark)" }}>income stream.</span>
+        </h1>
+        <p style={{ fontSize: 19, lineHeight: 1.5, color: "var(--g-700)", margin: "0 auto 34px", maxWidth: 560 }}>
+          One tasteful sponsored blurb while your agent works — you keep{" "}
+          <em style={{ fontStyle: "normal", color: "var(--g-1000)", fontWeight: 600 }}>half</em> of every impression.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/wallet" className="btn btn--ink btn--lg">
+            Start earning <ArrowRight />
+          </Link>
+          <Link href="/advertise" className="btn btn--outline btn--lg">
+            Advertise with us
+          </Link>
+        </div>
+        <div className="mono" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 22, marginTop: 30, fontSize: 13, color: "var(--g-650)", flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <span style={{ color: "var(--earn-text)", display: "inline-flex" }}>
+              <Shield />
             </span>
-            <span>·</span>
-            <span>balances hidden by default</span>
-            <span>·</span>
-            <span>never a banner</span>
+            50/50 split
+          </span>
+        </div>
+      </section>
+
+      {/* before / after comparison — replaces the v1 terminal mock (handoff §2/§9) */}
+      <section style={{ maxWidth: 640, margin: "0 auto", padding: "4px 28px 76px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+          {/* stock */}
+          <div>
+            <div className="mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--g-650)", margin: "0 0 9px 4px" }}>
+              Stock Claude
+            </div>
+            <div style={{ background: "#20283a", borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", gap: 12, whiteSpace: "nowrap", overflow: "hidden", border: "1px solid #2e3954" }}>
+              <span style={{ color: "#d99a72", fontSize: 18, display: "inline-flex", flexShrink: 0 }}>
+                <Spinner />
+              </span>
+              <span className="mono" style={{ fontSize: 16, color: "#e6a884" }}>
+                Reticulating
+              </span>
+              <span className="mono" style={{ marginLeft: "auto", fontSize: 12, color: "#7c879c", flexShrink: 0 }}>
+                Glob · 1.2s
+              </span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", color: "#7bdc3a", fontSize: 18, lineHeight: 1 }}>↓</div>
+
+          {/* with blurbcode */}
+          <div>
+            <div className="mono" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--earn-text)", margin: "0 0 9px 4px" }}>
+              With BlurbCode
+            </div>
+            <div style={{ background: "#20283a", borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", gap: 12, whiteSpace: "nowrap", overflow: "hidden", border: "1px solid rgba(155,255,60,0.32)", boxShadow: "0 0 0 1px rgba(155,255,60,0.12)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 7, background: "#4b3df5", color: "#fff", fontSize: 14, fontWeight: 800, flexShrink: 0 }}>
+                D
+              </span>
+              <span className="mono" style={{ fontSize: 16, color: "#a9c7ff", flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                Dynamic · wallets in minutes
+              </span>
+              <span className="mono" style={{ marginLeft: "auto", paddingLeft: 10, fontSize: 12, color: "#7c879c", flexShrink: 0 }}>
+                Grep · 3.8s
+              </span>
+            </div>
           </div>
         </div>
-
-        {/* terminal mock */}
-        <Terminal path="~/acme-api — blurbcode" shadow="hero">
-          <div className="t-faint">
-            <span className="term-caret">›</span> implement the stripe webhook handler
-          </div>
-          <TermStep>
-            read <span className="term-bright">routes/webhooks.ts</span>
-          </TermStep>
-          <TermStep>
-            edited <span className="term-bright">3 files</span>, +84 −12
-          </TermStep>
-          <TermStep>
-            ran <span className="term-bright">pnpm test</span> — 24 passing
-          </TermStep>
-          <div style={{ height: 14 }} />
-          <StatusLine word="Working" advertiser={{ letter: "L", name: "Linear", copy: "plan, build, ship faster" }} />
-          <div style={{ marginTop: 12, color: "var(--term-dim)", fontSize: 11.5 }}>
-            ↑ one blurb · never covers your work · you earned <span className="term-check">$0.0021</span> from this view
-          </div>
-        </Terminal>
+        <div style={{ textAlign: "center", marginTop: 24, fontSize: 15, color: "var(--g-700)" }}>
+          Same status line. One tasteful blurb — and{" "}
+          <b style={{ color: "var(--g-1000)", fontWeight: 600 }}>half the revenue is yours.</b>
+        </div>
       </section>
 
       {/* trust strip */}
@@ -103,18 +119,11 @@ export default function Landing() {
           className="shell"
           style={{ padding: "22px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap", fontSize: 13, color: "var(--g-650)" }}
         >
-          <span className="mono" style={{ textTransform: "uppercase", letterSpacing: "0.1em", fontSize: 11, color: "var(--g-600)" }}>
-            trusted plumbing
-          </span>
           <span>
             Private USDC settlement on <b style={{ color: "var(--g-1000)", fontWeight: 600 }}>Arc</b>
           </span>
           <span style={{ color: "var(--g-400)" }}>/</span>
           <span>Non-custodial wallet, your keys</span>
-          <span style={{ color: "var(--g-400)" }}>/</span>
-          <span>
-            Every payout <b style={{ color: "var(--g-1000)", fontWeight: 600 }}>reviewed for fraud</b>
-          </span>
           <span style={{ color: "var(--g-400)" }}>/</span>
           <span>MIT-licensed core</span>
         </div>
@@ -124,7 +133,7 @@ export default function Landing() {
       <section className="shell" style={{ padding: "84px 28px" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, gap: 24, flexWrap: "wrap" }}>
           <div>
-            <div className="eyebrow eyebrow--gold" style={{ marginBottom: 12 }}>
+            <div className="eyebrow eyebrow--green" style={{ marginBottom: 12 }}>
               how it works
             </div>
             <h2 className="display" style={{ fontSize: 38, letterSpacing: "-0.02em" }}>
@@ -161,21 +170,21 @@ export default function Landing() {
         className="shell grid-collapse"
         style={{ padding: "0 28px 88px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
       >
-        {/* developers — dark */}
-        <div className="card card--dark card--18" style={{ padding: 38 }}>
+        {/* developers — softer dark blue (handoff §9) */}
+        <div className="card--18" style={{ background: "#2a3957", color: "var(--g-100)", padding: 38, position: "relative", overflow: "hidden" }}>
           <div className="eyebrow eyebrow--green" style={{ marginBottom: 16 }}>
             for developers
           </div>
           <h3 className="display" style={{ fontSize: 27, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
             Get paid to do what you already do.
           </h3>
-          <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--g-600)", margin: "0 0 24px", maxWidth: 420 }}>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--g-400)", margin: "0 0 24px", maxWidth: 420 }}>
             Install, code as normal, watch earnings accrue per impression. Withdraw privately whenever you cross $10. No
             spam, no telemetry on your code.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 28 }}>
             {DEV_POINTS.map((p) => (
-              <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--g-400)" }}>
+              <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--indigo-light)" }}>
                 <span style={{ color: "var(--earn)", display: "inline-flex", flexShrink: 0 }}>
                   <Check />
                 </span>
@@ -187,7 +196,7 @@ export default function Landing() {
             <span style={{ color: "var(--indigo)" }}>$</span> npm i -g blurbcode <span style={{ color: "var(--term-dim)" }}>&& blurb login</span>
           </div>
           <Link href="/me" className="btn" style={{ background: "var(--g-100)", color: "var(--g-1000)" }}>
-            See an earnings dashboard <ArrowRight size={17} />
+            See earnings <ArrowRight size={17} />
           </Link>
         </div>
 
@@ -224,7 +233,7 @@ export default function Landing() {
             </span>
           </div>
           <Link href="/advertise" className="btn btn--ink">
-            Open the campaign portal <ArrowRight size={17} />
+            Advertise <ArrowRight size={17} />
           </Link>
         </div>
       </section>

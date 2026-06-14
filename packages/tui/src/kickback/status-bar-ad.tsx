@@ -16,10 +16,10 @@ import { reportImpression } from "./backend"
 // tracking runs while the slot is mounted (i.e. while the agent is working); consent off
 // or an empty slot renders nothing, so the caller falls back to the normal title.
 //
-// The advertiser marker is a `›` caret in indigo #6676b3 — the BlurbCode status-line
-// glyph (a real image logo isn't feasible in a terminal). It points at the blurb rather
-// than decorating it. The advertiser name + copy are clickable to open the campaign URL
-// and count a click.
+// The advertiser marker is a `›` caret in the BlurbCode accent blue (#5b8cff, theme.primary)
+// — the status-line glyph (a real image logo isn't feasible in a terminal). It points at the
+// blurb rather than decorating it. The advertiser name + copy are clickable to open the
+// campaign URL and count a click.
 export function StatusBarAd() {
   const { theme } = useTheme()
   const [state, setState] = createSignal<AdState>(adStore.getState())
@@ -45,7 +45,7 @@ export function StatusBarAd() {
     <Show when={ad()}>
       {(current) => (
         <box flexDirection="row" gap={1} flexShrink={0} onMouseUp={() => onClickAd(current().url)}>
-          <text fg="#6676b3">›</text>
+          <text fg={theme.primary}>›</text>
           <text fg={theme.text}>
             {current().advertiser}
             <span style={{ fg: theme.textMuted }}> · {current().text}</span>

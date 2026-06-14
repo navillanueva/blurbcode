@@ -51,8 +51,7 @@ export default function WalletPage() {
           Connect a wallet, get a device token.
         </h1>
         <p style={{ fontSize: 16, lineHeight: 1.55, color: "var(--g-700)", margin: "0 auto", maxWidth: 520 }}>
-          Sign in with email or social — we create a non-custodial wallet behind the scenes. Then paste a device token into
-          your terminal to start earning.
+          Sign in with email or social — we create a non-custodial wallet, then issue a device token for your terminal.
         </p>
       </div>
 

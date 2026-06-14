@@ -40,9 +40,9 @@ export function AdSlot() {
     <Show when={ad()}>
       {(current) => (
         <box flexDirection="row" gap={1} flexShrink={0}>
-          <text fg={theme.accent}>◆</text>
+          <text fg={theme.primary}>›</text>
           <text fg={theme.textMuted}>{current().text}</text>
-          <text fg={theme.accent} onMouseUp={() => onClickAd(current().url)}>
+          <text fg={theme.primary} onMouseUp={() => onClickAd(current().url)}>
             ↗
           </text>
         </box>

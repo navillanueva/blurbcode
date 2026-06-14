@@ -71,13 +71,25 @@ export function BlurbMark({
         strokeLinejoin="round"
         fill="none"
       />
-      <circle cx={67} cy={50} r={7} fill="#6676b3" />
+      <circle cx={67} cy={50} r={7} fill="#2d52d8" />
     </svg>
   )
 }
 
-// Lowercase wordmark: "blurb" (ink, 600) + "code" (g-650, 600). On dark surfaces
-// "blurb" inherits the parent's light color automatically.
+// The v2 brand mark: a neon-green block cursor (a solid rectangle that snaps like
+// a real terminal caret) sitting just left of the wordmark (handoff §7/§9).
+export function BlockCursor({ w = 9, h = 18, blink = true }: { w?: number; h?: number; blink?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`block-cursor${blink ? " block-cursor--blink" : ""}`}
+      style={{ width: w, height: h }}
+    />
+  )
+}
+
+// Lowercase wordmark: "blurb" (deep navy, 600) + "code" (vibrant blue, 600), Inter
+// sans (handoff §9). On dark surfaces "blurb" inherits the parent's light color.
 export function Wordmark({ size = 17 }: { size?: number }) {
   return (
     <span className="wordmark" style={{ fontSize: size }}>
@@ -87,21 +99,24 @@ export function Wordmark({ size = 17 }: { size?: number }) {
   )
 }
 
-// Mark + wordmark lockup.
+// Block cursor + wordmark lockup (the only "home" affordance). Header blinks; the
+// footer passes blink={false} for a static, smaller cursor.
 export function Logo({
-  markSize = 28,
   wordSize = 17,
-  variant = "dark",
-  gap = 10,
+  cursorW = 9,
+  cursorH = 18,
+  blink = true,
+  gap = 9,
 }: {
-  markSize?: number
   wordSize?: number
-  variant?: MarkVariant
+  cursorW?: number
+  cursorH?: number
+  blink?: boolean
   gap?: number
 }) {
   return (
     <span className="logo" style={{ gap }}>
-      <BlurbMark size={markSize} variant={variant} />
+      <BlockCursor w={cursorW} h={cursorH} blink={blink} />
       <Wordmark size={wordSize} />
     </span>
   )

@@ -5,37 +5,38 @@
    ========================================================================== */
 
 :root {
-  /* ---- Neutrals (the "grey" ramp) ---- */
-  --g-100: #fdfdfd; /* page surface / cards */
-  --g-200: #f6f6f6; /* body background, inset fills */
-  --g-300: #ebebeb; /* hairline borders */
-  --g-400: #e1e1df; /* input borders, dividers */
-  --g-500: #cdcdcb; /* outline-button border */
-  --g-600: #b1b1b0; /* faint captions */
-  --g-650: #8f8e8a; /* muted captions */
-  --g-700: #6b6a66; /* secondary body text */
-  --g-800: #484846; /* strong body text */
-  --g-900: #252525; /* dark surfaces */
-  --g-1000: #141414; /* primary text, primary buttons, ink */
+  /* ---- Neutrals → v2 "blue ramp" (light-blue surfaces, deep-navy ink) ----
+     Token NAMES kept stable so components re-theme via this remap (handoff §3). */
+  --g-100: #eef4fc; /* card surface — soft light blue (not pure white) */
+  --g-200: #e8f0fb; /* page background, inset fills — light blue */
+  --g-300: #dbe5f5; /* hairline borders — bluish */
+  --g-400: #cdd9ee; /* input borders, dividers */
+  --g-500: #b9c8e6; /* outline-button border */
+  --g-600: #aab6c9; /* faint captions */
+  --g-650: #8593ad; /* muted captions — blue-grey */
+  --g-700: #5b6b86; /* secondary body text — blue-grey */
+  --g-800: #3a4a63; /* strong body text */
+  --g-900: #20283a; /* dark surfaces (soft slate) */
+  --g-1000: #15244d; /* primary text, primary buttons, ink — deep navy */
 
-  /* ---- Brand — indigo (the single signature accent) ---- */
-  --indigo-light: #c7d1de;
-  --indigo: #6676b3;
-  --indigo-dark: #4d5a8d;
-  --indigo-tint: #eef1f7; /* OSS badge / ledger tile bg */
-  --indigo-tile: #f4f6fa; /* how-it-works icon tile bg */
+  /* ---- Brand — vibrant blue (the single signature accent) ---- */
+  --indigo-light: #cdd9f7;
+  --indigo: #2d52d8;
+  --indigo-dark: #1c3aa8;
+  --indigo-tint: #e7eefc; /* OSS badge / ledger tile bg */
+  --indigo-tile: #eaf1fd; /* how-it-works icon tile bg */
 
-  /* ---- Brand — gold (decorative, used sparingly) ---- */
-  --gold-light: #ebe1cd;
-  --gold: #ccb98c;
-  --gold-dark: #9c8760;
+  /* ---- Brand — gold retired → mapped to neon green (handoff §3) ---- */
+  --gold-light: #f1fde4;
+  --gold: #9bff3c;
+  --gold-dark: #2f8f1e;
 
-  /* ---- Semantic — success / earnings ---- */
-  --earn-bg: #f9fff0;
-  --earn: #9be055;
-  --earn-text: #668b22;
-  --earn-border: #c9eda0;
-  --earn-fill: #bfe394; /* chart bars (non-latest) */
+  /* ---- Semantic — success / earnings (neon green) ---- */
+  --earn-bg: #f1fde4;
+  --earn: #9bff3c;
+  --earn-text: #2f8f1e;
+  --earn-border: #bfe8a0;
+  --earn-fill: #bfe8a0; /* chart bars (non-latest) */
 
   /* ---- Semantic — warning ---- */
   --warn-bg: #fffcef;
@@ -136,6 +137,32 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Block-cursor blink — snaps like a real terminal caret (handoff §7/§9). */
+@keyframes bc-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Neon-green block cursor that sits left of the wordmark (the brand mark). */
+.block-cursor {
+  display: inline-block;
+  width: 9px;
+  height: 18px;
+  border-radius: 1px;
+  background: var(--earn);
+  box-shadow: 0 0 8px rgba(155, 255, 60, 0.55);
+  flex-shrink: 0;
+}
+.block-cursor--blink {
+  animation: bc-blink 1.1s steps(1) infinite;
 }
 
 /* ============================================================================
@@ -241,7 +268,7 @@ a {
   color: var(--g-100);
 }
 .btn--ink:hover:not(:disabled) {
-  background: #000;
+  background: #0e1730;
 }
 .btn--outline {
   background: var(--g-100);
@@ -572,7 +599,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(253, 253, 253, 0.85);
+  background: rgba(238, 244, 252, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--g-300);
@@ -601,7 +628,7 @@ a {
 }
 .wordmark__b {
   font-weight: 600;
-  color: var(--g-650);
+  color: var(--indigo); /* two-tone navy/blue wordmark (handoff §9) */
 }
 .main-nav {
   display: flex;
@@ -723,7 +750,7 @@ a {
 }
 
 .term-caret {
-  color: var(--indigo);
+  color: #5b8cff; /* brighter blue caret for contrast on dark (handoff §3) */
 }
 .term-check {
   color: var(--earn);
@@ -760,7 +787,7 @@ a {
   margin: 0;
 }
 .status-line__spin {
-  color: var(--indigo);
+  color: #5b8cff; /* brighter blue caret/spinner on dark (handoff §3) */
   font-size: 13px;
   flex-shrink: 0;
 }
