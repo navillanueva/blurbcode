@@ -14,6 +14,8 @@ export interface Campaign {
   advertiser: string
   text: string
   url: string
+  /** Advertiser logo URL (http(s) or root-relative like /ads/dynamic.png). */
+  logoUrl?: string
   bidBaseUnits: string
   /** Original funded budget (what must be paid to fund). */
   budgetBaseUnits?: string
@@ -204,6 +206,8 @@ export interface CreateCampaignInput {
   advertiser: string
   text: string
   url: string
+  /** Optional advertiser logo URL (http(s) or root-relative). */
+  logoUrl?: string
   /** USDC base units (string). Use money.ts `toBaseUnits` to build these. */
   bidBaseUnits: string
   budgetBaseUnits: string

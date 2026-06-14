@@ -43,6 +43,8 @@ export const campaigns = pgTable(
     advertiser: text("advertiser").notNull(),
     text: text("text").notNull(),
     url: text("url").notNull(),
+    /** Optional advertiser logo (a URL the web renders next to the blurb). */
+    logoUrl: text("logo_url"),
     /** Bid in USDC base units per 1,000 impressions (one "block"). */
     bidBaseUnits: numeric("bid_base_units").notNull(),
     /** Original funded budget (additive col — lets /campaigns report spend). */

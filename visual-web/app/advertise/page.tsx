@@ -19,7 +19,7 @@ import { Check, Lock } from "@/components/Icons"
 const FIXED_PRICE_USDC = "10"
 const FIXED_PRICE_LABEL = "$10 per 1,000 views"
 
-const EMPTY = { advertiser: "", text: "", url: "", budget: "" }
+const EMPTY = { advertiser: "", text: "", url: "", logo: "", budget: "" }
 
 export default function AdvertisePage() {
   const { me, isLoggedIn, refresh } = useMe()
@@ -145,6 +145,8 @@ export default function AdvertisePage() {
           advertiser,
           text,
           url,
+          // Optional — omit when blank so the backend stores null rather than "".
+          logoUrl: form.logo.trim() || undefined,
           // Ignored server-side (price is fixed); sent only to satisfy the typed contract.
           bidBaseUnits: toBaseUnits(FIXED_PRICE_USDC, decimals).toString(),
           budgetBaseUnits,
@@ -303,6 +305,20 @@ export default function AdvertisePage() {
                 />
               </div>
               <div className="field">
+                <label className="field__label field__label--row" htmlFor="adv-logo">
+                  <span>Logo URL</span>
+                  <span className="field__hint">optional · square image</span>
+                </label>
+                <input
+                  id="adv-logo"
+                  className="input input--mono"
+                  placeholder="https://acme.dev/logo.png"
+                  value={form.logo}
+                  onChange={(e) => set("logo", e.target.value)}
+                  disabled={locked}
+                />
+              </div>
+              <div className="field">
                 <label className="field__label" htmlFor="adv-budget">
                   Budget (USDC)
                 </label>
@@ -362,7 +378,14 @@ export default function AdvertisePage() {
                 <Spinner className="status-line__spin" />
                 <span className="status-line__word">compiling…</span>
                 <span className="status-line__blurb">
-                  <span className="adv-tile">{(form.advertiser || "A").charAt(0).toUpperCase()}</span>
+                  {form.logo.trim() ? (
+                    <span className="adv-tile" style={{ overflow: "hidden", padding: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- advertiser-supplied remote URL, not a bundled asset */}
+                      <img src={form.logo.trim()} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </span>
+                  ) : (
+                    <span className="adv-tile">{(form.advertiser || "A").charAt(0).toUpperCase()}</span>
+                  )}
                   <span className="status-line__name">{form.advertiser || "Your brand"}</span>
                   <span className="status-line__copy">— {form.text || "your ad text"}</span>
                   <span className="ad-tag">ad</span>

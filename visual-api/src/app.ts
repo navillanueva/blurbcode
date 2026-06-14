@@ -77,6 +77,17 @@ function asString(v: unknown): string | undefined {
   return typeof v === "string" && v.length > 0 ? v : undefined
 }
 
+/** Accept only http(s) absolute URLs or root-relative paths for advertiser logos. */
+function isSafeLogoUrl(v: string): boolean {
+  if (v.startsWith("/") && !v.startsWith("//")) return true
+  try {
+    const proto = new URL(v).protocol
+    return proto === "http:" || proto === "https:"
+  } catch {
+    return false
+  }
+}
+
 /** Parse an integer base-units string ("1000000"); reject anything else. */
 function parseBaseUnits(v: unknown): bigint | undefined {
   if (typeof v !== "string" || !BASE_UNITS_RE.test(v)) return undefined
@@ -240,6 +251,12 @@ export function createApp(deps: AppDeps) {
         400,
       )
     }
+    // Optional advertiser logo. Restricted to http(s) or root-relative URLs so a
+    // crafted value can't smuggle a javascript:/data: payload into the <img src>.
+    const rawLogo = asString(body?.["logoUrl"])
+    if (rawLogo && !isSafeLogoUrl(rawLogo)) {
+      return c.json({ ok: false, error: "logoUrl must be an http(s) or root-relative URL" }, 400)
+    }
     // Pricing is fixed platform-wide ($10/1,000 views): the bid is set server-side
     // so clients can't under- or over-bid; only the budget is theirs to control.
     const campaign = await repo.createCampaign(deps.db, {
@@ -247,6 +264,7 @@ export function createApp(deps: AppDeps) {
       advertiser,
       text,
       url,
+      logoUrl: rawLogo ?? null,
       bidBaseUnits: FIXED_BID_BASE_UNITS,
       budgetBaseUnits: budget,
     })

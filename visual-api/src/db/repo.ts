@@ -66,6 +66,8 @@ export interface CampaignRow {
   advertiser: string
   text: string
   url: string
+  /** Advertiser logo URL (web display); null when the ad is text-only. */
+  logoUrl: string | null
   bidBaseUnits: string
   budgetBaseUnits: string
   budgetRemainingBaseUnits: string
@@ -80,6 +82,7 @@ function toCampaignRow(r: typeof campaigns.$inferSelect): CampaignRow {
     advertiser: r.advertiser,
     text: r.text,
     url: r.url,
+    logoUrl: r.logoUrl ?? null,
     bidBaseUnits: r.bidBaseUnits,
     budgetBaseUnits: r.budgetBaseUnits,
     budgetRemainingBaseUnits: r.budgetRemainingBaseUnits,
@@ -96,6 +99,7 @@ export async function createCampaign(
     advertiser: string
     text: string
     url: string
+    logoUrl?: string | null
     bidBaseUnits: bigint
     budgetBaseUnits: bigint
   },
@@ -109,6 +113,7 @@ export async function createCampaign(
       advertiser: params.advertiser,
       text: params.text,
       url: params.url,
+      logoUrl: params.logoUrl ?? null,
       bidBaseUnits: params.bidBaseUnits.toString(),
       budgetBaseUnits: params.budgetBaseUnits.toString(),
       budgetRemainingBaseUnits: params.budgetBaseUnits.toString(),
@@ -170,6 +175,7 @@ export async function activeAuctionCandidates(db: Database): Promise<AuctionCand
     advertiser: r.advertiser,
     text: r.text,
     url: r.url,
+    logoUrl: r.logoUrl ?? null,
     bidBaseUnits: BigInt(r.bidBaseUnits),
     budgetRemaining: BigInt(r.budgetRemainingBaseUnits),
     status: r.status,

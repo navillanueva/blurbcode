@@ -12,6 +12,8 @@ export interface AuctionCandidate {
   advertiser: string
   text: string
   url: string
+  /** Advertiser logo URL (web display); null/absent for text-only ads. */
+  logoUrl?: string | null
   bidBaseUnits: BaseUnits
   budgetRemaining: BaseUnits
   status: string
@@ -25,6 +27,8 @@ export interface ServedAd {
   advertiser: string
   text: string
   url: string
+  /** Advertiser logo URL — only present when the winning campaign has one. */
+  logoUrl?: string
 }
 
 function ms(t: Date | number): number {
@@ -32,7 +36,10 @@ function ms(t: Date | number): number {
 }
 
 function toServed(c: AuctionCandidate): ServedAd {
-  return { id: c.id, advertiser: c.advertiser, text: c.text, url: c.url }
+  const ad: ServedAd = { id: c.id, advertiser: c.advertiser, text: c.text, url: c.url }
+  // Only attach logoUrl when present so text-only ads keep their exact shape.
+  if (c.logoUrl) ad.logoUrl = c.logoUrl
+  return ad
 }
 
 /**
