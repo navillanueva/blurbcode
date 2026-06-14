@@ -5,7 +5,7 @@ import { useDynamicContext } from "@dynamic-labs/sdk-react-core"
 import { createDeviceToken, getTreasury, withdraw, type Treasury } from "@/lib/api"
 import { fromBaseUnits } from "@/lib/money"
 import { useMe } from "@/lib/useMe"
-import { BlurbMark } from "@/components/BlurbMark"
+import { Logo } from "@/components/BlurbMark"
 import { VerifyHuman } from "@/components/VerifyHuman"
 import { ArrowRight, Check, Coin, Copy, Eye, Lock, Shield, WarningTriangle } from "@/components/Icons"
 
@@ -198,14 +198,16 @@ function WalletAndToken({
   }
 
   return (
-    <div className="grid-collapse" style={{ display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 20, alignItems: "start", marginBottom: 40 }}>
-      {/* wallet card */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 40 }}>
+      {/* wallet card — sits on top of the token card, kept to a credit-card size */}
       <div
         style={{
           background: "linear-gradient(155deg,#141414 0%,#252525 60%,#4d5a8d 140%)",
           color: "var(--g-100)",
           borderRadius: 18,
           padding: 26,
+          width: "100%",
+          maxWidth: 360,
           aspectRatio: "1.586 / 1",
           display: "flex",
           flexDirection: "column",
@@ -216,7 +218,7 @@ function WalletAndToken({
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <BlurbMark size={34} variant="light" />
+          <Logo wordSize={15} cursorW={8} cursorH={15} blink={false} />
           <span className="mono" style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(253,253,253,0.6)" }}>
             non-custodial
           </span>

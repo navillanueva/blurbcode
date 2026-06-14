@@ -140,7 +140,7 @@ export default function Landing() {
       <section className="shell" style={{ padding: "84px 28px" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, gap: 24, flexWrap: "wrap" }}>
           <div>
-            <div className="eyebrow eyebrow--green" style={{ marginBottom: 12 }}>
+            <div className="eyebrow" style={{ color: "var(--earn-text)", marginBottom: 12 }}>
               how it works
             </div>
             <h2 className="display" style={{ fontSize: 38, letterSpacing: "-0.02em" }}>
