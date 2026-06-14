@@ -20,6 +20,14 @@ import { createKickbackClient, type KickbackClient } from "@kickback-ai/provider
 /** The auth.json key under which the Visual Code connection is stored. */
 export const VISUALCODE_PROVIDER_ID = "visualcode"
 
+/**
+ * The hosted BlurbCode backend, baked into the build so a user only ever pastes a
+ * device token — they never need to know or paste the backend URL. Overridable via
+ * `VISUALCODE_API_URL` (dev) or a stored `metadata.apiUrl` (legacy `/wallet` entries).
+ * Keep in sync with the `login` command default (packages/opencode/src/cli/cmd/login.ts).
+ */
+export const DEFAULT_API_URL = "https://visual-api-production.up.railway.app"
+
 /** Resolved connection: where the backend is + the device token to authenticate with. */
 export interface VisualcodeConnection {
   apiUrl: string
@@ -67,7 +75,8 @@ async function readStoredEntry(): Promise<{ key?: string; metadata?: Record<stri
  */
 export async function resolveVisualcodeConnection(env = process.env): Promise<VisualcodeConnection | undefined> {
   const entry = await readStoredEntry()
-  const apiUrl = clean(entry?.metadata?.apiUrl) ?? clean(env.VISUALCODE_API_URL)
+  // apiUrl always resolves (baked default), so a stored token alone is enough to connect.
+  const apiUrl = clean(entry?.metadata?.apiUrl) ?? clean(env.VISUALCODE_API_URL) ?? DEFAULT_API_URL
   const token = clean(entry?.key) ?? clean(env.VISUALCODE_TOKEN)
   if (!apiUrl || !token) return undefined
   const privateKey = clean(entry?.metadata?.privateKey)

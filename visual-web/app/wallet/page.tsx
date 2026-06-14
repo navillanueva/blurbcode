@@ -149,13 +149,15 @@ function ConnectedState({
   }, [issueToken])
 
   const masked = token ? token.slice(0, 7) + "•".repeat(21) : ""
-  const loginShort = token ? (token.length > 16 ? `${token.slice(0, 11)}…${token.slice(-4)}` : token) : ""
   const shortAddr = address ? `${address.slice(0, 6)} ···· ${address.slice(-4)}` : "—"
+  // The full, paste-ready command. The backend URL is baked into the BlurbCode build,
+  // so a bare `login --token` is all the user needs.
+  const loginCmd = token ? `blurbcode login --token ${token}` : ""
 
   async function copy() {
-    if (!token) return
+    if (!loginCmd) return
     try {
-      await navigator.clipboard.writeText(token)
+      await navigator.clipboard.writeText(loginCmd)
       setCopied(true)
       setTimeout(() => setCopied(false), 1400)
     } catch {
@@ -216,7 +218,7 @@ function ConnectedState({
           </h2>
         </div>
         <p style={{ fontSize: 13.5, color: "var(--g-650)", margin: "0 0 22px", lineHeight: 1.5 }}>
-          Paste this into your terminal once. It authorizes this machine to earn — and nothing else.
+          Run this one command in your terminal — it links this machine to your account, and nothing else.
         </p>
 
         {tokenError ? (
@@ -232,24 +234,19 @@ function ConnectedState({
         ) : !token ? (
           <div className="banner" style={{ marginBottom: 20 }}>Issuing a device token…</div>
         ) : (
-          <>
-            <div style={{ background: "var(--g-200)", border: "1px solid var(--g-400)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-              <span className="mono" style={{ fontSize: 14, color: "var(--g-1000)", flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                {reveal ? token : masked}
-              </span>
-              <button className="linkbtn" onClick={() => setReveal((v) => !v)}>
-                {reveal ? "Hide" : "Reveal"}
-              </button>
-              <button className="btn btn--ink btn--copy" onClick={copy}>
-                <Copy size={14} />
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-
-            <div className="mono" style={{ background: "var(--term-body)", border: "1px solid var(--term-border)", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "var(--g-650)", marginBottom: 20 }}>
-              <span style={{ color: "var(--indigo)" }}>$</span> blurb login --token <span className="term-check">{loginShort}</span>
-            </div>
-          </>
+          <div className="mono" style={{ background: "var(--term-body)", border: "1px solid var(--term-border)", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: "var(--g-100)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ color: "var(--indigo)" }}>$</span> blurbcode login --token{" "}
+              <span className="term-check">{reveal ? token : masked}</span>
+            </span>
+            <button className="linkbtn" onClick={() => setReveal((v) => !v)}>
+              {reveal ? "Hide" : "Reveal"}
+            </button>
+            <button className="btn btn--ink btn--copy" onClick={copy}>
+              <Copy size={14} />
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
         )}
 
         <Link href="/me" className="btn btn--outline btn--block">

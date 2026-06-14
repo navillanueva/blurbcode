@@ -9,7 +9,7 @@ set -euo pipefail
 
 APP=blurbcode
 BINARY=blurbcode
-REPO=navillanueva/visualcode
+REPO=navillanueva/blurbcode
 
 MUTED='\033[0;2m'
 RED='\033[0;31m'
