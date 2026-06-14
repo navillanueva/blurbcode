@@ -115,7 +115,13 @@ export default function AdvertisePage() {
 
     const token = treasury.token as `0x${string}`
     const to = treasury.address as `0x${string}`
-    const walletClient = await primaryWallet.getWalletClient(String(treasury.chainId))
+    // Dynamic drops the wallet client when the session expires; calling
+    // getWalletClient() then throws a cryptic "Unable to retrieve WalletClient".
+    // Catch it, reopen the auth flow, and surface an actionable reconnect message.
+    const walletClient = await primaryWallet.getWalletClient(String(treasury.chainId)).catch(() => {
+      setShowAuthFlow(true)
+      throw new Error("Your wallet session expired. Reconnect your wallet, then try paying again.")
+    })
     const sender = walletClient.account.address
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC_URL) })
 
