@@ -4,7 +4,7 @@
 
 import { createApp, type TreasuryInfo } from "./app"
 import { createDynamicVerifier } from "./auth/dynamic"
-import { createWorldIdVerifier } from "./auth/world-id"
+import { createWorldIdVerifier, signRpContext } from "./auth/world-id"
 import { createDatabase } from "./db/index"
 import { applySchema } from "./db/migrate"
 import { loadServerConfig } from "./env"
@@ -20,15 +20,18 @@ const dynamicVerifier = createDynamicVerifier({
   environmentId: config.dynamic.environmentId,
   serverApiKey: config.dynamic.serverApiKey,
 })
-// World ID verifier is constructed only when WORLD_ID_APP_ID is set; otherwise the
-// verify-human endpoint returns 503 and the personhood gates are no-ops (mock/dev).
-const worldIdVerifier = config.worldId.appId
-  ? createWorldIdVerifier({
-      appId: config.worldId.appId,
-      action: config.worldId.action,
-      verifyUrl: config.worldId.verifyUrl,
-    })
+// World ID 4.0: the verifier needs the RP id; the rp-context signer needs the RP id +
+// signing key. Both stay undefined (→ verify-human / rp-context return 503, gates are
+// no-ops) until WORLD_RP_ID + WORLD_RP_SIGNING_KEY are configured (mock/dev otherwise).
+const worldIdVerifier = config.worldId.rpId
+  ? createWorldIdVerifier({ rpId: config.worldId.rpId, verifyUrl: config.worldId.verifyUrl })
   : undefined
+const worldIdRpId = config.worldId.rpId
+const worldIdSigningKey = config.worldId.signingKey
+const worldIdSignContext =
+  worldIdRpId && worldIdSigningKey
+    ? () => signRpContext({ rpId: worldIdRpId, action: config.worldId.action, signingKey: worldIdSigningKey })
+    : undefined
 
 // Treasury info for GET /api/treasury (the EOA advertisers pay + token/chain/decimals).
 const kb = readKickbackEnv()
@@ -44,7 +47,7 @@ const app = createApp({
   tokenSigningSecret: config.tokenSigningSecret,
   secureCookies: config.secureCookies,
   corsOrigins: config.corsOrigins,
-  worldId: { appId: config.worldId.appId, verifier: worldIdVerifier },
+  worldId: { appId: config.worldId.appId, verifier: worldIdVerifier, signContext: worldIdSignContext },
   webAppUrl: config.webAppUrl,
   treasury,
   // Fixed-price bid uses the deployment's USDC decimals (ARC_USDC_DECIMALS); the

@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm"
 import { jsonInit, makeHarness, sessionCookie } from "./helpers"
 import { earnings } from "../src/db/schema"
 import * as repo from "../src/db/repo"
-import { createWorldIdVerifier, type WorldIdVerifier } from "../src/auth/world-id"
+import { createWorldIdVerifier, signRpContext, type WorldIdVerifier } from "../src/auth/world-id"
 
 const A = "0x" + "1".repeat(40)
 const B = "0x" + "2".repeat(40)
@@ -145,38 +145,60 @@ describe("World ID personhood gate", () => {
     expect(((await created.json()) as { campaign: { status: string } }).campaign.status).toBe("draft")
   })
 
-  test("verifier POSTs the IDKit payload and returns the nullifier on HTTP 200", async () => {
+  test("verifier POSTs the IDKit result to /api/v4/verify/{rp_id} and returns the response nullifier", async () => {
     let capturedUrl = ""
     let capturedBody: unknown
     const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
       capturedUrl = String(url)
       capturedBody = JSON.parse(String(init?.body))
-      return new Response("{}", { status: 200 })
+      return new Response(JSON.stringify({ success: true, nullifier: NULLIFIER, action: "blurbcode-account" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
     }) as unknown as typeof fetch
-    const verifier = createWorldIdVerifier({ appId: "app_xyz", action: "visualcode-account", fetchImpl })
+    const verifier = createWorldIdVerifier({ rpId: "rp_xyz", fetchImpl })
 
-    const { nullifierHash } = await verifier.verify({
-      nullifier_hash: NULLIFIER,
-      merkle_root: "0xroot",
-      proof: "0xproof",
-      verification_level: "orb",
-    })
+    const idkitResponse = { protocol_version: "3.0", action: "blurbcode-account", responses: [{ nullifier: NULLIFIER }] }
+    const { nullifierHash } = await verifier.verify(idkitResponse)
     expect(nullifierHash).toBe(NULLIFIER)
-    expect(capturedUrl).toBe("https://developer.worldcoin.org/api/v2/verify/app_xyz")
-    expect(capturedBody).toEqual({
-      nullifier_hash: NULLIFIER,
-      merkle_root: "0xroot",
-      proof: "0xproof",
-      verification_level: "orb",
-      action: "visualcode-account",
-    })
+    expect(capturedUrl).toBe("https://developer.world.org/api/v4/verify/rp_xyz")
+    // Forwarded as-is + the legacy opt-in (orbLegacy emits v3 proofs).
+    expect(capturedBody).toEqual({ ...idkitResponse, allow_legacy_proofs: true })
   })
 
-  test("verifier throws on a non-200 (no proof leaked in the message)", async () => {
+  test("verifier throws on a non-200 / unsuccessful body (no proof leaked in the message)", async () => {
     const fetchImpl = (async () =>
-      new Response("invalid proof: 0xsecret", { status: 400 })) as unknown as typeof fetch
-    const verifier = createWorldIdVerifier({ appId: "app_xyz", action: "visualcode-account", fetchImpl })
-    await expect(verifier.verify({ nullifier_hash: NULLIFIER })).rejects.toThrow(/HTTP 400/)
-    await expect(verifier.verify({ nullifier_hash: NULLIFIER })).rejects.not.toThrow(/0xsecret/)
+      new Response(JSON.stringify({ success: false, code: "invalid_proof", detail: "0xsecret" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      })) as unknown as typeof fetch
+    const verifier = createWorldIdVerifier({ rpId: "rp_xyz", fetchImpl })
+    await expect(verifier.verify({ responses: [] })).rejects.toThrow(/HTTP 400/)
+    // The error carries World's `code`, never the proof/detail string.
+    await expect(verifier.verify({ responses: [] })).rejects.not.toThrow(/0xsecret/)
+  })
+
+  test("signRpContext signs and shapes a fresh rp-context for the widget", () => {
+    const ctx = signRpContext({ rpId: "rp_xyz", action: "blurbcode-account", signingKey: "0x" + "1".repeat(64) })
+    expect(ctx.rp_id).toBe("rp_xyz")
+    expect(typeof ctx.nonce).toBe("string")
+    expect(typeof ctx.signature).toBe("string")
+    expect(ctx.expires_at).toBeGreaterThan(ctx.created_at)
+  })
+
+  test("POST /api/me/world-rp-context → 503 unconfigured, the signed context when configured", async () => {
+    const unconfigured = await makeHarness({ worldId: { appId: "app_test", verifier: stubVerifier } })
+    const c1 = await login(unconfigured, "rpctx-503", A)
+    const r503 = await unconfigured.app.request("/api/me/world-rp-context", jsonInit("POST", {}, { cookie: c1 }))
+    expect(r503.status).toBe(503)
+
+    const ctx = { rp_id: "rp_xyz", nonce: "n", created_at: 1, expires_at: 2, signature: "0xsig" }
+    const configured = await makeHarness({
+      worldId: { appId: "app_test", verifier: stubVerifier, signContext: () => ctx },
+    })
+    const c2 = await login(configured, "rpctx-ok", B)
+    const ok = await configured.app.request("/api/me/world-rp-context", jsonInit("POST", {}, { cookie: c2 }))
+    expect(ok.status).toBe(200)
+    expect((await ok.json()) as unknown).toEqual(ctx)
   })
 })

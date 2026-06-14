@@ -6,6 +6,7 @@
       "name": "@visual-code/api",
       "dependencies": {
         "@unlink-xyz/sdk": "file:./vendor/unlink-xyz-sdk-0.3.0-canary.552.tgz",
+        "@worldcoin/idkit-server": "1.1.1",
         "drizzle-orm": "1.0.0-rc.2",
         "hono": "4.10.7",
         "jose": "5.9.6",
@@ -93,6 +94,8 @@
 
     "@noble/hashes": ["@noble/hashes@2.2.0", "", {}, "sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg=="],
 
+    "@noble/secp256k1": ["@noble/secp256k1@2.3.0", "", {}, "sha512-0TQed2gcBbIrh7Ccyw+y/uZQvbJwm7Ao4scBUxqpBCcsOlZG0O4KGfjtNAy/li4W8n1xt3dxrwJ0beZ2h2G6Kw=="],
+
     "@scure/base": ["@scure/base@2.2.0", "", {}, "sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg=="],
 
     "@scure/bip32": ["@scure/bip32@2.2.0", "", { "dependencies": { "@noble/curves": "2.2.0", "@noble/hashes": "2.2.0", "@scure/base": "2.2.0" } }, "sha512-zFr7t2F+a9+5tB7QbarF2HQNYrgjCNaoLAupZdKkrFMYMozJf5zqH2WJCQibMzm1qQ0QogrxVGO3qXfQDYMaQg=="],
@@ -122,6 +125,8 @@
     "@typescript/native-preview-win32-x64": ["@typescript/native-preview-win32-x64@7.0.0-dev.20251207.1", "", { "os": "win32", "cpu": "x64" }, "sha512-5l51HlXjX7lXwo65DEl1IaCFLjmkMtL6K3NrSEamPNeNTtTQwZRa3pQ9V65dCglnnCQ0M3+VF1RqzC7FU0iDKg=="],
 
     "@unlink-xyz/sdk": ["@unlink-xyz/sdk@./vendor/unlink-xyz-sdk-0.3.0-canary.552.tgz", { "dependencies": { "@noble/curves": "^2.2.0", "@noble/hashes": "^2.2.0", "@scure/base": "^2.0.0", "@scure/bip32": "^2.2.0", "@scure/bip39": "^2.0.1", "openapi-fetch": "^0.13.5", "poseidon-lite": "^0.3.0", "viem": "^2.47.6" } }, "sha512-igk1VFCIbtYaEkcDYjKOPADTtA7a+qNJ4DD+4sT/gyI3bHi/YM4sLpyOpUqlWlHG/ccq93xj83Ndma2GdhmBdQ=="],
+
+    "@worldcoin/idkit-server": ["@worldcoin/idkit-server@1.1.1", "", { "dependencies": { "@noble/hashes": "^1.7.2", "@noble/secp256k1": "^2.2.3" } }, "sha512-iO4Kd3QBLzJak3BPz5eIzRjW0kT8Px5c3LbNzvCKMnczLvVSKoWqdvGiJlkK8Dp29KstNI62iv4ak0z8nzui/Q=="],
 
     "@x402/core": ["@x402/core@2.15.0", "", { "dependencies": { "zod": "^3.24.2" } }, "sha512-Hwop1cu80sf3H4dpNdiMJt7ay30Jf7JUjgx7dXHxQm/nYqOjTcm71FC/ZhpnIpeg6RSAUt7EI/rFTXx/lafHhw=="],
 
@@ -168,6 +173,8 @@
     "ws": ["ws@8.20.1", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w=="],
 
     "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "@worldcoin/idkit-server/@noble/hashes": ["@noble/hashes@1.8.0", "", {}, "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A=="],
 
     "ox/@noble/curves": ["@noble/curves@1.9.1", "", { "dependencies": { "@noble/hashes": "1.8.0" } }, "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA=="],
 

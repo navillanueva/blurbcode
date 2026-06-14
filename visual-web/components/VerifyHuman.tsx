@@ -1,21 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { IDKitWidget, type ISuccessResult } from "@worldcoin/idkit"
-import { verifyHuman } from "@/lib/api"
+import { IDKitRequestWidget, orbLegacy, type IDKitResult, type RpContext } from "@worldcoin/idkit"
+import { getWorldRpContext, verifyHuman } from "@/lib/api"
 import { Check, Shield, WarningTriangle } from "@/components/Icons"
 
-// World ID app id + action come from the World Developer Portal
-// (developer.worldcoin.org). Public values — they ship to the browser. The
-// app_id is typed `app_${string}` by IDKit; the cast is safe because we only
-// render the widget once a non-empty value is present (see `configured`).
+// World ID 4.0. The app is a managed RP, so the widget can't open without a signed
+// rp_context — we fetch one from our backend (POST /api/me/world-rp-context, which
+// signs with the RP key server-side), then open IDKitRequestWidget. orbLegacy +
+// allow_legacy_proofs accept Orb (v3) proofs during migration. On success the IDKit
+// result is forwarded to the backend, which verifies it against /api/v4/verify and
+// binds the nullifier. app_id is public (ships to the browser).
 const APP_ID = process.env.NEXT_PUBLIC_WORLD_ID_APP_ID ?? ""
-// Must match the action registered in the World Developer Portal AND the backend's
-// WORLD_ID_ACTION — the proof is bound to (app_id, action), so a mismatch fails verify.
+// Must match the registered v4 action AND the backend's WORLD_ID_ACTION (it's hashed
+// into the rp-context signature, so a mismatch fails verification).
 const ACTION = process.env.NEXT_PUBLIC_WORLD_ID_ACTION ?? "blurbcode-account"
 
-// Maps the backend's machine error codes to copy a human can act on. The 409
-// "already_linked" is the anti-Sybil block (this World ID is bound elsewhere).
 function messageFor(error: string | undefined): string {
   switch (error) {
     case "already_linked":
@@ -30,17 +30,16 @@ function messageFor(error: string | undefined): string {
 }
 
 /**
- * Renders the World ID (IDKit) widget. On a successful proof its `handleVerify`
- * POSTs the payload to the backend (`verifyHuman`), which binds the nullifier to
- * the logged-in account. On success it calls `onVerified` so the parent can
- * refresh `me`; backend rejections (esp. 409 already_linked) surface as friendly
- * copy. If the app id is unset we render a disabled note rather than crash.
- *
- * @param copy   one-line prompt shown above the button (page-specific).
- * @param onVerified  called after the backend confirms the link (refresh `me`).
+ * World ID 4.0 verification button. Clicking fetches a signed rp_context, then opens
+ * the IDKit widget; the proof is verified server-side and the nullifier bound to the
+ * account. Backend rejections (esp. 409 already_linked) surface as friendly copy. If
+ * the app id is unset we render a disabled note rather than crash.
  */
 export function VerifyHuman({ copy, onVerified }: { copy: string; onVerified: () => void }) {
   const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const [rpContext, setRpContext] = useState<RpContext | null>(null)
+  const [loading, setLoading] = useState(false)
   const configured = APP_ID.length > 0
 
   if (!configured) {
@@ -54,20 +53,27 @@ export function VerifyHuman({ copy, onVerified }: { copy: string; onVerified: ()
     )
   }
 
-  // Runs after the World App returns a proof, before IDKit shows its success
-  // screen. We forward the proof to the backend; throwing here makes IDKit show
-  // an error instead of success, and we mirror the reason in our own banner.
-  async function handleVerify(result: ISuccessResult) {
+  // Fetch a fresh signed rp_context, then open the widget. The widget can't render
+  // without rp_context, so we only mount it once we have one.
+  async function start() {
     setError(null)
-    const res = await verifyHuman({
-      proof: result.proof,
-      merkle_root: result.merkle_root,
-      nullifier_hash: result.nullifier_hash,
-      verification_level: result.verification_level,
-      // Forward the exact action the proof was generated for, so the backend verifies
-      // against it instead of falling back to its own (which caused the 400).
-      action: ACTION,
-    })
+    setLoading(true)
+    try {
+      const ctx = await getWorldRpContext()
+      setRpContext(ctx)
+      setOpen(true)
+    } catch {
+      setError("Couldn't start verification. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Runs after the World App returns a proof. Forward it to the backend; throwing
+  // makes IDKit show an error instead of success, and we mirror the reason.
+  async function handleVerify(result: IDKitResult) {
+    setError(null)
+    const res = await verifyHuman({ rp_id: rpContext!.rp_id, idkitResponse: result })
     if (!res.ok) {
       const msg = messageFor(res.error)
       setError(msg)
@@ -98,19 +104,24 @@ export function VerifyHuman({ copy, onVerified }: { copy: string; onVerified: ()
         </div>
       ) : null}
 
-      <IDKitWidget
-        app_id={APP_ID as `app_${string}`}
-        action={ACTION}
-        handleVerify={handleVerify}
-        onSuccess={onVerified}
-        onError={(e) => setError(e?.code ? messageFor(undefined) : "Verification was cancelled or failed.")}
-      >
-        {({ open }) => (
-          <button type="button" className="btn btn--ink btn--block btn--48" onClick={open}>
-            <Check size={16} strokeWidth={2.4} /> Verify with World ID
-          </button>
-        )}
-      </IDKitWidget>
+      <button type="button" className="btn btn--ink btn--block btn--48" onClick={start} disabled={loading}>
+        <Check size={16} strokeWidth={2.4} /> {loading ? "Starting…" : "Verify with World ID"}
+      </button>
+
+      {rpContext ? (
+        <IDKitRequestWidget
+          open={open}
+          onOpenChange={setOpen}
+          app_id={APP_ID as `app_${string}`}
+          action={ACTION}
+          rp_context={rpContext}
+          allow_legacy_proofs={true}
+          preset={orbLegacy()}
+          handleVerify={handleVerify}
+          onSuccess={() => onVerified()}
+          onError={() => setError("Verification was cancelled or failed.")}
+        />
+      ) : null}
     </div>
   )
 }
