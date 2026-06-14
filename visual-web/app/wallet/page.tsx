@@ -237,7 +237,7 @@ function WithdrawPanel({ onDone }: { onDone: () => void }) {
     setWithdrawing(true)
     try {
       const res = await withdraw()
-      setMsg(res.tx_ref ? `Withdrawal submitted (ref ${res.tx_ref}).` : "Withdrawal submitted.")
+      setMsg(res.txRef ? `Withdrawal submitted (ref ${res.txRef}).` : "Withdrawal submitted.")
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

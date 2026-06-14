@@ -293,7 +293,7 @@ function CampaignRow({
   onFund: () => void
 }) {
   const remaining = campaign.budgetRemainingBaseUnits
-  const spent = campaign.spentBaseUnits
+  const spent = campaign.spendBaseUnits
   let pct: number | null = null
   if (remaining !== undefined && spent !== undefined) {
     const total = BigInt(remaining) + BigInt(spent)

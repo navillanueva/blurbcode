@@ -19,7 +19,7 @@ export interface Campaign {
   budgetBaseUnits?: string
   budgetRemainingBaseUnits?: string
   /** Total spent so far, if the backend reports it. */
-  spentBaseUnits?: string
+  spendBaseUnits?: string
   status?: string
   createdAt?: string
 }
@@ -143,8 +143,8 @@ export function createDeviceToken(): Promise<{ token: string }> {
 }
 
 /** Settle accrued earnings to the account's wallet (Gateway x402 + Unlink). */
-export function withdraw(): Promise<{ ok: boolean; tx_ref?: string }> {
-  return request<{ ok: boolean; tx_ref?: string }>("/api/withdraw", { method: "POST" })
+export function withdraw(): Promise<{ ok: boolean; txRef?: string | null }> {
+  return request<{ ok: boolean; txRef?: string | null }>("/api/withdraw", { method: "POST" })
 }
 
 // --- Campaigns ------------------------------------------------------------
