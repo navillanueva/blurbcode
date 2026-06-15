@@ -49,6 +49,7 @@ const app = createApp({
   corsOrigins: config.corsOrigins,
   worldId: { appId: config.worldId.appId, verifier: worldIdVerifier, signContext: worldIdSignContext },
   webAppUrl: config.webAppUrl,
+  apiBaseUrl: config.apiBaseUrl,
   treasury,
   // Fixed-price bid uses the deployment's USDC decimals (ARC_USDC_DECIMALS); the
   // app defaults to USDC_DECIMALS when arc isn't configured (mock/dev).

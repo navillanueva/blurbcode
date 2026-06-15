@@ -6,7 +6,7 @@
 
 import { and, desc, eq, sql } from "drizzle-orm"
 import type { Database } from "./index"
-import { accounts, campaigns, deviceTokens, earnings, impressions, settlements } from "./schema"
+import { accounts, campaigns, clicks, deviceTokens, earnings, impressions, settlements } from "./schema"
 import { computeImpressionCharge } from "../accounting"
 import type { AuctionCandidate } from "../auction"
 import { generateDeviceToken, newId } from "../auth/tokens"
@@ -285,9 +285,32 @@ export async function recordImpression(
   })
 }
 
+/** Record one server-observed click (measurement-only; not credited as earnings). */
+export async function recordClick(
+  db: Database,
+  params: { devAccountId: string; campaignId: string },
+): Promise<void> {
+  await db.insert(clicks).values({
+    id: newId(),
+    devAccountId: params.devAccountId,
+    campaignId: params.campaignId,
+  })
+}
+
+/** How many clicks this account recorded since `since` (the click rate-limit window). */
+export async function recentClickCount(db: Database, accountId: string, since: Date): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<string>`count(*)` })
+    .from(clicks)
+    .where(and(eq(clicks.devAccountId, accountId), sql`${clicks.createdAt} >= ${since}`))
+  return Number(row?.n ?? "0")
+}
+
 export interface EarningsSnapshot {
   balanceBaseUnits: bigint
   impressions: number
+  /** Server-observed clicks for this account (measurement stat, not money). */
+  clicks: number
 }
 
 export async function getEarnings(db: Database, accountId: string): Promise<EarningsSnapshot> {
@@ -296,9 +319,14 @@ export async function getEarnings(db: Database, accountId: string): Promise<Earn
     .select({ total: sql<string>`coalesce(sum(${impressions.count}), 0)` })
     .from(impressions)
     .where(eq(impressions.devAccountId, accountId))
+  const [clk] = await db
+    .select({ n: sql<string>`count(*)` })
+    .from(clicks)
+    .where(eq(clicks.devAccountId, accountId))
   return {
     balanceBaseUnits: e ? BigInt(e.balanceBaseUnits) : 0n,
     impressions: Number(imp?.total ?? "0"),
+    clicks: Number(clk?.n ?? "0"),
   }
 }
 

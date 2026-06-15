@@ -49,3 +49,57 @@ Spec: `ETH Global AI Plans/plans/plan-4-private-custodial-settlement.md`. Work i
 - Remaining = user-gated only: browser frontend verify, then P0b vendoring + Railway flip to real.
 - Surfaced (not mine, excluded from commits): a 26-line edit to `ETH Global AI Plans/CLAUDE.md`.
 
+---
+
+# Anti-fraud hardening: daily earning cap + server-observed clicks
+
+Context: an open-source TUI fork can strip the ad and/or fabricate impressions. The
+withdrawal-time World ID gate already kills the sybil farm and budget-clamping caps
+advertiser loss. These two additions tighten the residual single-account exposure and
+replace a self-reported click stat with a server-observed one.
+
+## Feature A — per-account daily impression cap (bounds single-account daily take)
+- [ ] `ratelimit.ts`: add `DAY_WINDOW_MS` + `MAX_IMPRESSIONS_PER_DAY`; extend
+      `allowedImpressionCount` to also clamp by remaining daily room.
+- [ ] `app.ts` `POST /api/impressions`: compute `recentInDay` (reuse
+      `repo.recentImpressionCount` with a 24h `since`) and pass it through.
+- [ ] `ratelimit.test.ts`: cover the daily clamp (pure-function level).
+
+## Feature C — server-observed clicks via redirect endpoint (un-stub `clicks: 0`)
+- [ ] `schema.ts` + `drizzle/0004_clicks.sql`: new `clicks` table (dev, campaign, ts).
+- [ ] `repo.ts`: `recordClick`, `recentClickCount`; add `clicks` to `getEarnings`.
+- [ ] `auth/click-token.ts`: HMAC-signed `(accountId, campaignId)` token (mirrors
+      `session.ts`; URL-safe, constant-time verify).
+- [ ] `app.ts`: `AppDeps.apiBaseUrl?`; serve attaches `clickUrl`; new unauth
+      `GET /api/click/:campaignId` (verify token → rate-limit → record → 302 to campaign
+      url, validated http/https); earnings returns real click count.
+- [ ] `index.ts`: wire `apiBaseUrl` from env (else request-origin fallback).
+- [ ] providers `client.ts`: `ServedAd.clickUrl?` + parse.
+- [ ] TUI `ad-store.ts` / `ad-slot.tsx` / `status-bar-ad.tsx`: open `clickUrl ?? url`.
+- [ ] `click.test.ts`: serve→clickUrl, click→302+record, earnings reflect it, bad token.
+
+NOTE: clicks stay MEASUREMENT-ONLY (accounting still credits impressions only).
+Monetizing clicks later must reuse the World-ID withdrawal chokepoint + these caps.
+
+## Verify
+- [x] `bun run typecheck` clean: visual-api, packages/kickback, packages/tui (all EXIT 0)
+- [x] `bun test` green: visual-api 86 pass / 0 fail · providers 58 pass / 0 fail
+
+## Review
+- Feature A (daily cap) + Feature C (server-observed clicks) both implemented & verified.
+- A: `MAX_IMPRESSIONS_PER_DAY=17_280` (24h at honest ~12/min); route now clamps by
+  request/minute/day (the tightest wins). Pure-function tested in `ratelimit.test.ts`.
+  No integration test for the route-level daily clamp — reaching it needs time-travel
+  past the per-minute cap; the pure function is the right test altitude (matches the
+  existing window tests). Tune the constant down if $172/day per-account headroom is
+  too generous.
+- C: clicks are MEASUREMENT-ONLY (no payout wired). New `clicks` table + migration
+  0004, signed click-token attribution, `GET /api/click/:id` redirect (verify → rate-
+  limit 30/min → record → 302), `clickUrl` threaded serve→providers→TUI, earnings
+  un-stubbed. Integration-tested end to end in `click.test.ts` (valid/tampered/missing/
+  cross-campaign/unknown).
+- Click base URL derives from `VISUALCODE_API_URL` (→ `apiBaseUrl`), else the request
+  origin — correct behind Railway's proxy.
+- NOT done (out of scope, by design): monetizing clicks; web `/me` click display
+  (backend now returns the real count; surface it in the UI later if wanted).
+

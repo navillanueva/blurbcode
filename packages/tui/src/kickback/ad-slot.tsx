@@ -42,7 +42,7 @@ export function AdSlot() {
         <box flexDirection="row" gap={1} flexShrink={0}>
           <text fg={theme.primary}>›</text>
           <text fg={theme.textMuted}>{current().text}</text>
-          <text fg={theme.primary} onMouseUp={() => onClickAd(current().url)}>
+          <text fg={theme.primary} onMouseUp={() => onClickAd(current().clickUrl ?? current().url)}>
             ↗
           </text>
         </box>

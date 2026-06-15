@@ -23,6 +23,12 @@ export interface ServedAd {
   text: string
   /** Click target opened in the default browser. */
   url: string
+  /**
+   * Backend click-redirect URL (GET /api/click/:id?t=...) that records a
+   * server-observed click before forwarding to `url`. Open this instead of `url`
+   * when present; falls back to `url` for older APIs that omit it.
+   */
+  clickUrl?: string
 }
 
 /** Result of `serveAd()`. `null` ad = the auction had no winner (a valid, empty slot). */
@@ -125,7 +131,9 @@ export function parseServedAd(raw: unknown): ServedAd | null | undefined {
   const text = asString(ad.text)
   const url = asString(ad.url)
   if (id === undefined || advertiser === undefined || text === undefined || url === undefined) return undefined
-  return { id, advertiser, text, url }
+  // clickUrl is optional (older API omits it) — include only when it's a string.
+  const clickUrl = asString(ad.clickUrl)
+  return { id, advertiser, text, url, ...(clickUrl !== undefined ? { clickUrl } : {}) }
 }
 
 /** Map an arbitrary earnings payload into `Earnings`, or `undefined` if malformed. */

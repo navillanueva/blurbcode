@@ -17,6 +17,9 @@ export interface ServerConfig {
   worldId: { appId?: string; action: string; verifyUrl?: string; rpId?: string; signingKey?: string }
   /** Public web app base URL, surfaced in earnings so the TUI can link to verify. */
   webAppUrl?: string
+  /** This API's own public base URL (VISUALCODE_API_URL), used to build absolute
+   *  click-redirect URLs. Falls back to the request origin in the app when unset. */
+  apiBaseUrl?: string
 }
 
 function required(env: Record<string, string | undefined>, key: string): string {
@@ -53,5 +56,6 @@ export function loadServerConfig(env: Record<string, string | undefined> = proce
       signingKey: env.WORLD_RP_SIGNING_KEY?.trim() || undefined,
     },
     webAppUrl: env.WEB_APP_URL?.trim() || undefined,
+    apiBaseUrl: apiUrl.trim() || undefined,
   }
 }

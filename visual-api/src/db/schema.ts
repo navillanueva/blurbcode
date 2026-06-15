@@ -76,6 +76,25 @@ export const impressions = pgTable(
   (t) => [index("impressions_dev_created_idx").on(t.devAccountId, t.createdAt)],
 )
 
+// Server-observed ad clicks. Unlike impressions (client-reported counts), a click
+// row is written only when the browser actually hits GET /api/click/:id, so the
+// count is server-attested. MEASUREMENT-ONLY for now — accounting credits
+// impressions, not clicks.
+export const clicks = pgTable(
+  "clicks",
+  {
+    id: text("id").primaryKey(),
+    devAccountId: text("dev_account_id")
+      .notNull()
+      .references(() => accounts.id),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("clicks_dev_created_idx").on(t.devAccountId, t.createdAt)],
+)
+
 export const earnings = pgTable("earnings", {
   accountId: text("account_id")
     .primaryKey()
@@ -96,4 +115,4 @@ export const settlements = pgTable("settlements", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const schema = { accounts, deviceTokens, campaigns, impressions, earnings, settlements }
+export const schema = { accounts, deviceTokens, campaigns, impressions, clicks, earnings, settlements }

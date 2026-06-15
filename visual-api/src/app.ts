@@ -17,13 +17,14 @@ import { privateKeyToAccount } from "viem/accounts"
 import type { Database } from "./db/index"
 import * as repo from "./db/repo"
 import { selectRotating } from "./auction"
-import { allowedImpressionCount, RATE_WINDOW_MS } from "./ratelimit"
+import { allowedImpressionCount, RATE_WINDOW_MS, DAY_WINDOW_MS, MAX_CLICKS_PER_WINDOW } from "./ratelimit"
 import { computeImpressionCharge } from "./accounting"
 import { toBaseUnits, USDC_DECIMALS } from "@kickback/money"
 import { encryptSecret } from "./auth/crypto"
 import { SESSION_COOKIE, signSession, verifySession } from "./auth/session"
 import type { DynamicVerifier } from "./auth/dynamic"
 import { type WorldIdVerifier, type RpContext, WorldIdVerifyError } from "./auth/world-id"
+import { signClickToken, verifyClickToken } from "./auth/click-token"
 import type { SettlementService } from "./settlement/service"
 
 export interface AppDeps {
@@ -43,6 +44,12 @@ export interface AppDeps {
   worldId?: { appId?: string; verifier?: WorldIdVerifier; signContext?: () => RpContext }
   /** Public web app base URL, surfaced in earnings so the TUI can link to verify. */
   webAppUrl?: string
+  /**
+   * This API's own public base URL, used to build the absolute `clickUrl` returned
+   * by GET /api/ad/serve. Falls back to the incoming request's origin when unset
+   * (correct behind Railway's proxy, which forwards the public Host).
+   */
+  apiBaseUrl?: string
   /**
    * Where advertisers send their public USDC payment (the treasury EOA) + which
    * token/chain/decimals — surfaced via GET /api/treasury so the web hardcodes
@@ -88,6 +95,17 @@ function asString(v: unknown): string | undefined {
 function isSafeLogoUrl(v: string): boolean {
   if (v.startsWith("data:")) return DATA_IMAGE_RE.test(v)
   if (v.startsWith("/") && !v.startsWith("//")) return true
+  try {
+    const proto = new URL(v).protocol
+    return proto === "http:" || proto === "https:"
+  } catch {
+    return false
+  }
+}
+
+/** True for an absolute http(s) URL — the only safe target for a 302 redirect (the
+ *  click endpoint redirects to advertiser-stored URLs; reject anything else). */
+function isHttpUrl(v: string): boolean {
   try {
     const proto = new URL(v).protocol
     return proto === "http:" || proto === "https:"
@@ -457,10 +475,45 @@ export function createApp(deps: AppDeps) {
 
   // ── TUI routes (Bearer device token) ───────────────────────────────────────
 
-  // CONTRACT: GET /api/ad/serve → { ad: { id, advertiser, text, url } | null }
+  // CONTRACT: GET /api/ad/serve → { ad: { id, advertiser, text, url, clickUrl } | null }
+  // `clickUrl` routes the click through GET /api/click/:id so the click is observed
+  // server-side (vs. the client-reported impression count). It carries a signed token
+  // binding this dev (accountId) to the campaign, so the unauthenticated click
+  // endpoint can attribute the click without the bearer token leaking into a URL.
   app.get("/api/ad/serve", bearerAuth, async (c) => {
+    const accountId = c.get("accountId")
     const candidates = await repo.activeAuctionCandidates(deps.db)
-    return c.json({ ad: selectRotating(candidates, serveCursor++) })
+    const ad = selectRotating(candidates, serveCursor++)
+    if (!ad) return c.json({ ad: null })
+    const base = (deps.apiBaseUrl ?? new URL(c.req.url).origin).replace(/\/+$/, "")
+    const token = signClickToken(accountId, ad.id, deps.tokenSigningSecret)
+    const clickUrl = `${base}/api/click/${ad.id}?t=${encodeURIComponent(token)}`
+    return c.json({ ad: { ...ad, clickUrl } })
+  })
+
+  // CONTRACT: GET /api/click/:campaignId?t=<token> → 302 to the campaign URL.
+  // Unauthenticated (a browser navigation opened from the TUI, not a bearer fetch).
+  // A valid token records ONE server-observed click for the bound dev (rate-limited);
+  // the redirect ALWAYS happens so a human's click is never swallowed by a bad token.
+  // Clicks are measurement-only — recording one credits no earnings.
+  app.get("/api/click/:campaignId", async (c) => {
+    const campaignId = c.req.param("campaignId")
+    const campaign = await repo.getCampaignById(deps.db, campaignId)
+    // Without a resolvable, safe destination there is nothing to redirect to.
+    if (!campaign || !isHttpUrl(campaign.url)) {
+      return c.json({ ok: false, error: "unknown or unsafe campaign" }, 404)
+    }
+    // Attribute only when the token is valid AND bound to THIS campaign. A missing or
+    // mismatched token still redirects (don't break the user's click) but credits nothing.
+    const claim = verifyClickToken(c.req.query("t"), deps.tokenSigningSecret)
+    if (claim && claim.campaignId === campaignId) {
+      const since = new Date(now() - RATE_WINDOW_MS)
+      const recent = await repo.recentClickCount(deps.db, claim.accountId, since)
+      if (recent < MAX_CLICKS_PER_WINDOW) {
+        await repo.recordClick(deps.db, { devAccountId: claim.accountId, campaignId })
+      }
+    }
+    return c.redirect(campaign.url, 302)
   })
 
   // CONTRACT: POST /api/impressions { adId, count } → { ok: true, creditedBaseUnits }
@@ -479,8 +532,12 @@ export function createApp(deps: AppDeps) {
       return c.json({ ok: true, creditedBaseUnits: "0" })
     }
     const since = new Date(now() - RATE_WINDOW_MS)
-    const recent = await repo.recentImpressionCount(deps.db, accountId, since)
-    const allowed = allowedImpressionCount({ requested: count, recentInWindow: recent })
+    const dayAgo = new Date(now() - DAY_WINDOW_MS)
+    const [recent, recentInDay] = await Promise.all([
+      repo.recentImpressionCount(deps.db, accountId, since),
+      repo.recentImpressionCount(deps.db, accountId, dayAgo),
+    ])
+    const allowed = allowedImpressionCount({ requested: count, recentInWindow: recent, recentInDay })
     const { credited } = await repo.recordImpression(deps.db, {
       devAccountId: accountId,
       campaignId: adId,
@@ -495,12 +552,12 @@ export function createApp(deps: AppDeps) {
   app.get("/api/me/earnings", bearerAuth, async (c) => {
     const accountId = c.get("accountId")
     const account = await repo.getAccountById(deps.db, accountId)
-    const { balanceBaseUnits, impressions } = await repo.getEarnings(deps.db, accountId)
+    const { balanceBaseUnits, impressions, clicks } = await repo.getEarnings(deps.db, accountId)
     const worldIdVerified = await repo.isWorldIdVerified(deps.db, accountId)
     return c.json({
       balanceBaseUnits: balanceBaseUnits.toString(),
       impressions,
-      clicks: 0,
+      clicks,
       walletAddress: account?.address ?? "",
       worldIdVerified,
       verifyUrl: deps.webAppUrl ?? null,

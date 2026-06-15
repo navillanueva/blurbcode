@@ -58,7 +58,7 @@ export function StatusBarAd() {
   return (
     <Show when={ad()}>
       {(current) => (
-        <box flexDirection="row" gap={1} flexShrink={0} onMouseUp={() => onClickAd(current().url)}>
+        <box flexDirection="row" gap={1} flexShrink={0} onMouseUp={() => onClickAd(current().clickUrl ?? current().url)}>
           <text fg={markColor(current().advertiser)}>▐</text>
           <text fg={theme.text}>
             {current().advertiser}

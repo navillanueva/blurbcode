@@ -23,6 +23,12 @@ export interface Ad {
   /** Click target opened in the default browser. */
   url: string
   /**
+   * Backend click-redirect URL that records a server-observed click before
+   * forwarding to `url`. Opened in place of `url` when present (see ad-slot /
+   * status-bar-ad); absent for the offline SAMPLE_AD and older backends.
+   */
+  clickUrl?: string
+  /**
    * Advertiser's winning bid for ONE block, in USDC base units (6 dp). One block =
    * IMPRESSIONS_PER_BLOCK impressions, so the per-impression value derives from this.
    * Modelled as bigint so we never lose precision the way a float would.
@@ -175,6 +181,8 @@ export interface ServedAdInput {
   advertiser: string
   text: string
   url: string
+  /** Backend click-redirect URL (optional; older backends omit it). */
+  clickUrl?: string
 }
 
 /**
@@ -188,6 +196,7 @@ export function adFromServed(served: ServedAdInput): Ad {
     advertiser: served.advertiser,
     text: served.text,
     url: served.url,
+    ...(served.clickUrl ? { clickUrl: served.clickUrl } : {}),
     blockBidBaseUnits: 0n,
   }
 }
